@@ -5,7 +5,7 @@
 
 [![Лицензия: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Приветствуются](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Статус CI](https://github.com/cherninkiy/batch-pqc/workflows/CI/badge.svg)](https://github.com/cherninkiy/batch-pqc/actions)
+[![Статус CI](https://github.com/cherninkiy/batch-pqc/actions/workflows/ci.yml/badge.svg)](https://github.com/cherninkiy/batch-pqc/actions/workflows/ci.yml)
 
 **[English version](README.md)**
 
