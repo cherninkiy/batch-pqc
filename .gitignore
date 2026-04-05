@@ -1,0 +1,54 @@
+# Build artifacts
+/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dll
+*.dylib
+
+# IDE/project files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Python/benchmark scripts
+__pycache__/
+*.pyc
+
+# Results and generated data
+/results/
+/results/*
+*.csv
+*.png
+
+# Logs
+*.log
+
+# Submodule/third-party build outputs
+/third_party/*/build/
+/third_party/*/CMakeFiles/
+/third_party/*/CMakeCache.txt
+/third_party/*/cmake_install.cmake
+/third_party/*/Makefile
+/third_party/*/*.o
+/third_party/*/*.obj
+/third_party/*/*.exe
+/third_party/*/*.out
+/third_party/*/*.a
+/third_party/*/*.so
+/third_party/*/*.dll
+/third_party/*/*.dylib
+
+# Misc
+*.swp
+*~
+.DS_Store
+Thumbs.db

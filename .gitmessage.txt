@@ -1,0 +1,30 @@
+# <type>(<scope>): <subject>
+# <subject> — short description (up to 50 chars, imperative mood)
+
+# <body> — details with bullet points (-), each line up to 72 chars
+
+# <footer> — references to issues, breaking changes
+
+
+# Examples for this project:
+# feat(repo): add .gitmodules, third_party structure, and Russian README
+# - Add .gitmodules with all required submodules
+# - Create third_party directory with subfolders and README
+# - Add Russian version of README (README_ru.md)
+#
+# chore(submodules): initialize and fix submodule states
+# - Initialize and fix git submodule references for:
+#   - shipovnik
+#   - hypericum
+#   - kryzhovnik
+#   - iaik_merkle_tree
+# - Ensures reproducible builds with pinned submodule commits
+#
+# chore(repo): add .gitignore and basic CI workflow
+# - Add .gitignore for build, IDE, and result files
+# - Add minimal GitHub Actions workflow for repository checks
+#
+# docs(readme): update English and Russian README
+# - Synchronize structure and content of README.md and README_ru.md
+
+# Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build
