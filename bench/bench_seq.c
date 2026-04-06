@@ -10,6 +10,7 @@
 
 typedef struct bench_config {
     const char *algo;
+    const char *params;
     size_t batch_size;
     size_t iters;
     size_t msg_size;
@@ -21,6 +22,7 @@ typedef struct bench_config {
 
 typedef struct bench_result {
     const char *algorithm;
+    const char *params;
     size_t batch_size;
     double keygen_ms;
     double time_seq_ms;
@@ -33,6 +35,7 @@ typedef struct bench_result {
 static void print_usage(const char *prog) {
     printf("Usage: %s [options]\n", prog);
     printf("  --algo <name|all>      Algorithm name or all (default: all)\n");
+    printf("  --params <name>        Paramset tag for result output (default: default)\n");
     printf("  --batch-size <n>       Messages per iteration (default: 1)\n");
     printf("  --iters <n>            Iterations (default: 100)\n");
     printf("  --msg-size <n>         Message size in bytes (default: 1024)\n");
@@ -95,6 +98,7 @@ static int parse_args(int argc, char **argv, bench_config *cfg) {
     int i;
 
     cfg->algo = "all";
+    cfg->params = "default";
     cfg->batch_size = 1;
     cfg->iters = 100;
     cfg->msg_size = BB_DEFAULT_MESSAGE_SIZE;
@@ -111,6 +115,10 @@ static int parse_args(int argc, char **argv, bench_config *cfg) {
         }
         if (strcmp(arg, "--algo") == 0 && i + 1 < argc) {
             cfg->algo = argv[++i];
+            continue;
+        }
+        if (strcmp(arg, "--params") == 0 && i + 1 < argc) {
+            cfg->params = argv[++i];
             continue;
         }
         if (strcmp(arg, "--batch-size") == 0 && i + 1 < argc) {
@@ -252,6 +260,7 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
     }
 
     out->algorithm = algo->name;
+    out->params = cfg->params;
     out->batch_size = cfg->batch_size;
     out->peak_memory_mb = get_peak_memory_mb();
     out->total_sig_size_mb = (double)total_sig_bytes / (1024.0 * 1024.0);
@@ -275,8 +284,9 @@ fail:
 }
 
 static void print_result(const bench_result *r) {
-    printf("algo=%s batch=%zu keygen_ms=%.3f seq_ms=%.3f verify_ms=%.3f serialize_ms=%.3f peak_mem_mb=%.2f total_sig_mb=%.3f\n",
+        printf("algo=%s params=%s batch=%zu keygen_ms=%.3f seq_ms=%.3f verify_ms=%.3f serialize_ms=%.3f peak_mem_mb=%.2f total_sig_mb=%.3f\n",
            r->algorithm,
+           r->params,
            r->batch_size,
            r->keygen_ms,
            r->time_seq_ms,
@@ -289,8 +299,9 @@ static void print_result(const bench_result *r) {
 static int write_csv(FILE *f, const bench_result *r) {
     return fprintf(
         f,
-        "%s,%zu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+        "%s,%s,%zu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
         r->algorithm,
+        r->params,
         r->batch_size,
         r->time_seq_ms,
         0.0,
@@ -309,6 +320,7 @@ static int write_json(FILE *f, const bench_result *results, size_t count,
                 "{\n"
                 "  \"config\": {\n"
                 "    \"algo\": \"%s\",\n"
+                "    \"params\": \"%s\",\n"
                 "    \"batch_size\": %zu,\n"
                 "    \"iters\": %zu,\n"
                 "    \"msg_size\": %zu,\n"
@@ -317,6 +329,7 @@ static int write_json(FILE *f, const bench_result *results, size_t count,
                 "  },\n"
                 "  \"results\": [\n",
                 cfg->algo,
+                cfg->params,
                 cfg->batch_size,
                 cfg->iters,
                 cfg->msg_size,
@@ -328,11 +341,12 @@ static int write_json(FILE *f, const bench_result *results, size_t count,
     for (i = 0; i < count; ++i) {
         const bench_result *r = &results[i];
         if (fprintf(f,
-                    "    {\"algorithm\":\"%s\",\"batch_size\":%zu,"
+                    "    {\"algorithm\":\"%s\",\"params\":\"%s\",\"batch_size\":%zu,"
                     "\"time_seq_ms\":%.6f,\"time_batch_ms\":%.6f,"
                     "\"speedup\":%.6f,\"peak_memory_MB\":%.6f,"
                     "\"total_sig_size_MB\":%.6f,\"serialize_time_ms\":%.6f}%s\n",
                     r->algorithm,
+                    r->params,
                     r->batch_size,
                     r->time_seq_ms,
                     0.0,
@@ -378,7 +392,7 @@ int main(int argc, char **argv) {
             return 1;
         }
         fprintf(csv,
-                "algorithm,batch_size,time_seq_ms,time_batch_ms,speedup,"
+            "algorithm,params,batch_size,time_seq_ms,time_batch_ms,speedup,"
                 "peak_memory_MB,total_sig_size_MB,serialize_time_ms\n");
     }
 
