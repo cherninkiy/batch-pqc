@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
 OUTPUT_DIR="${ROOT_DIR}/results/bench-$(date +%Y%m%d-%H%M%S)"
 ALGOS="all"
-HYPERICUM_PARAMS="m_128_20"
-KRYZHOVNIK_PARAMS="medium"
+HYPERICUM_PARAMS="debug"
+KRYZHOVNIK_PARAMS="debug"
 BATCH_SIZES="1,2,4,8,16,32,64"
 ITERS=100
 MSG_SIZE=1024
@@ -19,10 +19,10 @@ usage() {
     cat <<EOF
 Usage: ./scripts/benchmark.sh [options]
     --algo <all|shipovnik|hypericum|kryzhovnik>
-    --hypericum-params <b_256_64|m_256_64|...> (default: m_128_20)
-    --kryzhovnik-params <small|medium|large|debug>   (default: medium)
+    --hypericum-params <b_256_64|m_256_64|b_256_20|m_256_20|b_128_20|m_128_20|debug> (default: debug)
+    --kryzhovnik-params <small|medium|large|debug>   (default: debug)
     --params <value>                           (legacy: sets hypericum;
-                                               also sets kryzhovnik when value is small|medium|large)
+                                               also sets kryzhovnik when value is small|medium|large|debug)
         
   --batch-sizes <comma-separated list>   (default: 1,2,4,8,16,32,64)
   --iters <n>                             (default: 100)

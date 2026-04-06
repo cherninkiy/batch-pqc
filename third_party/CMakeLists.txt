@@ -44,16 +44,21 @@ set(HYPERICUM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hypericum)
 if(TARGET streebog AND EXISTS "${HYPERICUM_DIR}/hypericum.c")
     set(HYPERICUM_PARAMSET "b_256_64" CACHE STRING "Select a hypericum parameter set")
     set_property(CACHE HYPERICUM_PARAMSET PROPERTY STRINGS
-        "b_256_64" "m_256_64" "b_256_20" "m_256_20" "b_128_20" "m_128_20")
+        "b_256_64" "m_256_64" "b_256_20" "m_256_20" "b_128_20" "m_128_20" "debug")
     if(NOT HYPERICUM_PARAMSET)
         set(HYPERICUM_PARAMSET "b_256_64")
     endif()
     message(STATUS "Using Hypericum parameter set ${HYPERICUM_PARAMSET}")
 
-    # Generate current-paramset.h from .h.in using HYPERICUM_PARAMSET as PARAMSET
-    set(PARAMSET ${HYPERICUM_PARAMSET})
+    if(HYPERICUM_PARAMSET STREQUAL "debug")
+        set(HYPERICUM_PARAMSET_INCLUDE "paramsets/hypericum/params_debug.h")
+    else()
+        set(HYPERICUM_PARAMSET_INCLUDE "paramsets/params_${HYPERICUM_PARAMSET}.h")
+    endif()
+
+    # Generate current-paramset.h in build tree from superproject template.
     configure_file(
-        ${HYPERICUM_DIR}/current-paramset.h.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/hypericum-current-paramset.h.in
         ${CMAKE_CURRENT_BINARY_DIR}/hypericum/current-paramset.h
     )
 
@@ -79,6 +84,7 @@ if(TARGET streebog AND EXISTS "${HYPERICUM_DIR}/hypericum.c")
         PUBLIC
             $<BUILD_INTERFACE:${HYPERICUM_DIR}/include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/hypericum>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         PRIVATE
             ${HYPERICUM_DIR}
             ${STREEBOG_DIR}

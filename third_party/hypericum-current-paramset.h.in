@@ -1,0 +1,8 @@
+/*
+   Superproject-generated Hypericum paramset selector.
+   This file allows local paramset overrides without patching hypericum submodule.
+*/
+
+#pragma once
+
+#include "@HYPERICUM_PARAMSET_INCLUDE@"
