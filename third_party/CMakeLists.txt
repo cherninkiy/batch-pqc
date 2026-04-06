@@ -152,38 +152,31 @@ if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
         list(APPEND KRYZHOVNIK_SOURCES ${KRYZHOVNIK_DIR}/kryzhovnik_wrapper.c)
     endif()
 
-    set_source_files_properties(${KRYZHOVNIK_SOURCES} PROPERTIES LANGUAGE CXX)
     add_library(kryzhovnik STATIC ${KRYZHOVNIK_SOURCES})
-    set_target_properties(kryzhovnik PROPERTIES LINKER_LANGUAGE CXX)
     target_include_directories(kryzhovnik PUBLIC
         $<BUILD_INTERFACE:${KRYZHOVNIK_DIR}>
     )
     target_link_libraries(kryzhovnik PRIVATE ${KRYZHOVNIK_OPENSSL_TARGET})
     target_compile_options(kryzhovnik PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
-        $<$<CXX_COMPILER_ID:MSVC>:/W4 /O2>
+        $<$<OR:$<C_COMPILER_ID:GNU>,$<C_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
+        $<$<C_COMPILER_ID:MSVC>:/W4 /O2>
     )
+    target_compile_features(kryzhovnik PRIVATE c_std_99)
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/pqs_test.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/pqs_test.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_test ${KRYZHOVNIK_DIR}/pqs_test.c)
-        set_target_properties(kryzhovnik_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_test COMMAND kryzhovnik_test)
     endif()
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_wrapper.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/test_wrapper.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_wrapper_test ${KRYZHOVNIK_DIR}/test_wrapper.c)
-        set_target_properties(kryzhovnik_wrapper_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_wrapper_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_wrapper_test COMMAND kryzhovnik_wrapper_test)
     endif()
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_pqs.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/test_pqs.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_api_test ${KRYZHOVNIK_DIR}/test_pqs.c)
-        set_target_properties(kryzhovnik_api_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_api_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_api_test COMMAND kryzhovnik_api_test)
     endif()
