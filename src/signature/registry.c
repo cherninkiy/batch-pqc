@@ -9,7 +9,7 @@
 
 static const bb_algorithm k_algorithms[] = {
     {
-        .name = "hypericum_m_128_20",
+        .name = "hypericum",
         .public_key_bytes = CRYPTO_PUBLICKEYBYTES,
         .secret_key_bytes = CRYPTO_SECRETKEYBYTES,
         .signature_bytes = CRYPTO_BYTES,

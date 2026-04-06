@@ -136,15 +136,12 @@ fi
 IFS=',' read -r -a batches <<< "$BATCH_SIZES"
 
 if [[ "$ALGOS" == "all" ]]; then
-    for algo in shipovnik "hypericum_${PARAMS}" kryzhovnik; do
+    for algo in shipovnik hypericum kryzhovnik; do
         for b in "${batches[@]}"; do
             run_one "$algo" "$b"
         done
     done
 else
-    if [[ "$ALGOS" == "hypericum" ]]; then
-        ALGOS="hypericum_${PARAMS}"
-    fi
     for b in "${batches[@]}"; do
         run_one "$ALGOS" "$b"
     done
