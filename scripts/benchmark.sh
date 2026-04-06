@@ -12,6 +12,7 @@ MSG_SIZE=1024
 SEED=1
 VERIFY=1
 DRY_RUN=0
+SKIP_EXISTING=1
 
 usage() {
     cat <<EOF
@@ -30,6 +31,7 @@ Usage: ./scripts/benchmark.sh [options]
   --build-dir <path>                      (default: ./build)
   --output-dir <path>                     (default: ./results/bench-<ts>)
   --dry-run
+    --skip-existing <0|1>                   (default: 1)
 EOF
 }
 
@@ -75,6 +77,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=1
             shift
             ;;
+        --skip-existing)
+            SKIP_EXISTING="$2"
+            shift 2
+            ;;
         --help)
             usage
             exit 0
@@ -93,6 +99,7 @@ echo "[benchmark] root:      $ROOT_DIR"
 echo "[benchmark] build dir: $BUILD_DIR"
 echo "[benchmark] output:    $OUTPUT_DIR"
 echo "[benchmark] params:    $PARAMS"
+echo "[benchmark] skip:      $SKIP_EXISTING"
 
 auto_configure_build() {
     cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -DHYPERICUM_PARAMSET=$PARAMS
@@ -104,6 +111,23 @@ run_one() {
     local batch_size="$2"
     local csv_out="$OUTPUT_DIR/${algo}_b${batch_size}.csv"
     local json_out="$OUTPUT_DIR/${algo}_b${batch_size}.json"
+    local csv_tmp="$csv_out.tmp"
+    local json_tmp="$json_out.tmp"
+
+    if [[ "$SKIP_EXISTING" -eq 1 ]]; then
+        if [[ -s "$csv_out" && -s "$json_out" ]]; then
+            echo "[skip] algo=$algo batch_size=$batch_size (artifacts exist)"
+            return
+        fi
+    fi
+
+    rm -f "$csv_tmp" "$json_tmp"
+    if [[ -f "$csv_out" && ! -s "$csv_out" ]]; then
+        rm -f "$csv_out"
+    fi
+    if [[ -f "$json_out" && ! -s "$json_out" ]]; then
+        rm -f "$json_out"
+    fi
 
     local cmd=(
         "$BUILD_DIR/bench/bench_seq"
@@ -114,8 +138,8 @@ run_one() {
         --seed "$SEED"
         --params "$PARAMS"
         --verify "$VERIFY"
-        --out-csv "$csv_out"
-        --out-json "$json_out"
+        --out-csv "$csv_tmp"
+        --out-json "$json_tmp"
     )
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -123,6 +147,8 @@ run_one() {
     else
         echo "[run] algo=$algo batch_size=$batch_size"
         "${cmd[@]}"
+        mv "$csv_tmp" "$csv_out"
+        mv "$json_tmp" "$json_out"
     fi
 }
 
