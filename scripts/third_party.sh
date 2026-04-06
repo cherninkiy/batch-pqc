@@ -31,6 +31,7 @@ do_install() {
   sudo apt-get update
   sudo apt-get install -y cmake build-essential pkg-config libssl-dev libcppunit-dev libntl-dev
   echo "[2/3] Initializing/updating git submodules..."
+  git submodule sync --recursive
   git submodule update --init --recursive
 }
 
@@ -45,15 +46,21 @@ do_tests() {
   echo "[4/4] Running tests..."
   cd "$BUILD_DIR"
   ctest --output-on-failure || true
-  # shipovnik_example
-  if [ -x third_party/shipovnik/shipovnik_example ]; then
+  if [ -x third_party/shipovnik_example ]; then
     echo "Running shipovnik_example..."
-    (cd third_party/shipovnik && ./shipovnik_example)
+    ./third_party/shipovnik_example
   fi
-  # hypericum PQCgenKAT_sign
-  if [ -x third_party/hypericum/PQCgenKAT_sign ]; then
+  if [ -x third_party/hypericum_example ]; then
+    echo "Running hypericum_example..."
+    ./third_party/hypericum_example
+  fi
+  if [ -x third_party/PQCgenKAT_sign ]; then
     echo "Running PQCgenKAT_sign..."
-    (cd third_party/hypericum && ./PQCgenKAT_sign)
+    ./third_party/PQCgenKAT_sign
+  fi
+  if [ -x third_party/kryzhovnik_test ]; then
+    echo "Running kryzhovnik_test..."
+    ./third_party/kryzhovnik_test
   fi
 }
 

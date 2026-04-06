@@ -6,7 +6,7 @@
 	url = https://github.com/QAPP-tech/hypericum_tc26.git
 [submodule "third_party/kryzhovnik"]
 	path = third_party/kryzhovnik
-	url = https://github.com/ElenaKirshanova/pqc_LWR_signature.git
+	url = https://github.com/cherninkiy/kryzhovnik-wrapper-tc26.git
 [submodule "third_party/iaik_merkle_tree"]
 	path = third_party/iaik_merkle_tree
 	url = https://github.com/IAIK/merkle-tree.git

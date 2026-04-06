@@ -6,72 +6,189 @@ cmake_minimum_required(VERSION 3.14)
 project(ThirdPartyModules LANGUAGES C CXX)
 
 # -------------------------------------------------------------------
-# 1. shipovnik (shipovnik/CMakeLists.txt)
+# 1. streebog (from hypericum/streebog sources — shared by hypericum and shipovnik)
 # -------------------------------------------------------------------
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shipovnik/CMakeLists.txt")
-    add_subdirectory(shipovnik)
+set(STREEBOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hypericum/streebog)
+if(EXISTS "${STREEBOG_DIR}/gost3411-2012-core.c")
+    set(GOST_OPTIMIZATION "0" CACHE STRING "Set GOST optimization level (0=none, 2=SSE2, 3=SSE4.1)")
+    set_property(CACHE GOST_OPTIMIZATION PROPERTY STRINGS "0" "1" "2" "3")
+
+    add_library(streebog STATIC
+        ${STREEBOG_DIR}/gost3411-2012-core.c
+    )
+    target_include_directories(streebog PUBLIC
+        $<BUILD_INTERFACE:${STREEBOG_DIR}>
+    )
+    set(INSTRUCTION_SET_SSE2  2)
+    set(INSTRUCTION_SET_SSE41 3)
+    if(GOST_OPTIMIZATION GREATER_EQUAL INSTRUCTION_SET_SSE41)
+        message(STATUS "GOST 34.11-2012 SSE4.1 optimization enabled")
+        target_compile_options(streebog PRIVATE -msse4.1 -msse2)
+        target_compile_definitions(streebog PRIVATE __GOST3411_HAS_SSE41__ __GOST3411_HAS_SSE2__)
+    elseif(GOST_OPTIMIZATION GREATER_EQUAL INSTRUCTION_SET_SSE2)
+        message(STATUS "GOST 34.11-2012 SSE2 optimization enabled")
+        target_compile_options(streebog PRIVATE -msse2)
+        target_compile_definitions(streebog PRIVATE __GOST3411_HAS_SSE2__)
+    else()
+        message(STATUS "GOST 34.11-2012 no optimization enabled")
+    endif()
+    set_property(TARGET streebog PROPERTY POSITION_INDEPENDENT_CODE ON)
 else()
-    message(WARNING "shipovnik submodule not initialized or missing CMakeLists.txt")
+    message(WARNING "hypericum/streebog not found — hypericum and shipovnik will not be built")
 endif()
 
 # -------------------------------------------------------------------
-# 2. hypericum (hypericum/CMakeLists.txt)
+# 2. hypericum (built directly, without hypericum/CMakeLists.txt)
 # -------------------------------------------------------------------
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hypericum/CMakeLists.txt")
-    add_subdirectory(hypericum)
+set(HYPERICUM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/hypericum)
+if(TARGET streebog AND EXISTS "${HYPERICUM_DIR}/hypericum.c")
+    set(HYPERICUM_PARAMSET "b_256_64" CACHE STRING "Select a hypericum parameter set")
+    set_property(CACHE HYPERICUM_PARAMSET PROPERTY STRINGS
+        "b_256_64" "m_256_64" "b_256_20" "m_256_20" "b_128_20" "m_128_20")
+    if(NOT HYPERICUM_PARAMSET)
+        set(HYPERICUM_PARAMSET "b_256_64")
+    endif()
+    message(STATUS "Using Hypericum parameter set ${HYPERICUM_PARAMSET}")
+
+    # Generate current-paramset.h from .h.in using HYPERICUM_PARAMSET as PARAMSET
+    set(PARAMSET ${HYPERICUM_PARAMSET})
+    configure_file(
+        ${HYPERICUM_DIR}/current-paramset.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/hypericum/current-paramset.h
+    )
+
+    add_library(hypericum STATIC
+        ${HYPERICUM_DIR}/sei.c
+        ${HYPERICUM_DIR}/sei_cryptoapi.c
+        ${HYPERICUM_DIR}/sei_urandom.c
+        ${HYPERICUM_DIR}/drbg.c
+        ${HYPERICUM_DIR}/adrs.c
+        ${HYPERICUM_DIR}/wotsc.c
+        ${HYPERICUM_DIR}/sign.c
+        ${HYPERICUM_DIR}/hash.c
+        ${HYPERICUM_DIR}/utils.c
+        ${HYPERICUM_DIR}/pack.c
+        ${HYPERICUM_DIR}/stack.c
+        ${HYPERICUM_DIR}/streebog.c
+        ${HYPERICUM_DIR}/xmss.c
+        ${HYPERICUM_DIR}/xmssmt.c
+        ${HYPERICUM_DIR}/fors.c
+        ${HYPERICUM_DIR}/hypericum.c
+    )
+    target_include_directories(hypericum
+        PUBLIC
+            $<BUILD_INTERFACE:${HYPERICUM_DIR}/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/hypericum>
+        PRIVATE
+            ${HYPERICUM_DIR}
+            ${STREEBOG_DIR}
+    )
+    target_link_libraries(hypericum PUBLIC streebog)
+    target_compile_features(hypericum PRIVATE c_std_99)
+
+    add_executable(hypericum_example ${HYPERICUM_DIR}/example.c)
+    target_link_libraries(hypericum_example PRIVATE hypericum)
+    target_compile_definitions(hypericum_example PRIVATE PARAMSET_NAME="${HYPERICUM_PARAMSET}")
 else()
-    message(WARNING "hypericum submodule not initialized or missing CMakeLists.txt")
+    message(WARNING "hypericum sources not found — skipping hypericum target")
 endif()
 
 # -------------------------------------------------------------------
-# 3. kryzhovnik (no CMakeLists.txt – build manually)
+# 3. shipovnik (built directly, without shipovnik/CMakeLists.txt)
+# -------------------------------------------------------------------
+set(SHIPOVNIK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shipovnik)
+if(TARGET streebog AND EXISTS "${SHIPOVNIK_DIR}/src/shipovnik.c")
+    set(ENTROPY_SOURCE "/dev/urandom" CACHE STRING "Entropy source path for shipovnik")
+
+    file(GLOB SHIPOVNIK_SOURCES "${SHIPOVNIK_DIR}/src/*.c")
+
+    add_library(shipovnik STATIC ${SHIPOVNIK_SOURCES})
+    target_include_directories(shipovnik
+        PUBLIC
+            $<BUILD_INTERFACE:${SHIPOVNIK_DIR}/include/shipovnik>
+        PRIVATE
+            ${SHIPOVNIK_DIR}/src
+            ${STREEBOG_DIR}
+    )
+    target_compile_definitions(shipovnik PRIVATE ENTROPY_SOURCE="${ENTROPY_SOURCE}")
+    target_link_libraries(shipovnik PRIVATE streebog)
+
+    add_executable(shipovnik_example ${SHIPOVNIK_DIR}/shipovnik_example.c)
+    target_link_libraries(shipovnik_example PRIVATE shipovnik)
+else()
+    message(WARNING "shipovnik sources not found — skipping shipovnik target")
+endif()
+
+# -------------------------------------------------------------------
+# 4. kryzhovnik wrapper fork (built directly, without kryzhovnik/CMakeLists.txt)
 # -------------------------------------------------------------------
 set(KRYZHOVNIK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/kryzhovnik)
-if(EXISTS "${KRYZHOVNIK_DIR}/pqs_test.c")   # marker: submodule is loaded
-    # Find OpenSSL
-    find_package(PkgConfig)
+if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
+    find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
-        pkg_check_modules(OPENSSL REQUIRED libcrypto)
+        pkg_check_modules(OPENSSL QUIET IMPORTED_TARGET libcrypto)
+    endif()
+    if(TARGET PkgConfig::OPENSSL)
+        set(KRYZHOVNIK_OPENSSL_TARGET PkgConfig::OPENSSL)
     else()
         find_package(OpenSSL REQUIRED)
-    endif()
-    if(NOT OPENSSL_FOUND)
-        message(FATAL_ERROR "OpenSSL not found (required for kryzhovnik)")
+        set(KRYZHOVNIK_OPENSSL_TARGET OpenSSL::Crypto)
     endif()
 
-    # All sources except the main test file
-    file(GLOB_RECURSE KRYZHOVNIK_SOURCES
-        "${KRYZHOVNIK_DIR}/*.c"
+    set(KRYZHOVNIK_SOURCES
+        ${KRYZHOVNIK_DIR}/cpucycles.c
+        ${KRYZHOVNIK_DIR}/fips202.c
+        ${KRYZHOVNIK_DIR}/getCPUTime.c
+        ${KRYZHOVNIK_DIR}/poly_mul.c
+        ${KRYZHOVNIK_DIR}/randombytes.c
+        ${KRYZHOVNIK_DIR}/rng.c
+        ${KRYZHOVNIK_DIR}/sign.c
     )
-    list(REMOVE_ITEM KRYZHOVNIK_SOURCES "${KRYZHOVNIK_DIR}/pqs_test.c")
+    if(EXISTS "${KRYZHOVNIK_DIR}/kryzhovnik_wrapper.c")
+        list(APPEND KRYZHOVNIK_SOURCES ${KRYZHOVNIK_DIR}/kryzhovnik_wrapper.c)
+    endif()
 
-    # Build all sources as C++
     set_source_files_properties(${KRYZHOVNIK_SOURCES} PROPERTIES LANGUAGE CXX)
     add_library(kryzhovnik STATIC ${KRYZHOVNIK_SOURCES})
-    target_include_directories(kryzhovnik PRIVATE
-        ${KRYZHOVNIK_DIR}
-        ${OPENSSL_INCLUDE_DIRS}
+    set_target_properties(kryzhovnik PROPERTIES LINKER_LANGUAGE CXX)
+    target_include_directories(kryzhovnik PUBLIC
+        $<BUILD_INTERFACE:${KRYZHOVNIK_DIR}>
     )
-    target_link_libraries(kryzhovnik PRIVATE ${OPENSSL_LIBRARIES})
+    target_link_libraries(kryzhovnik PRIVATE ${KRYZHOVNIK_OPENSSL_TARGET})
     target_compile_options(kryzhovnik PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:GNU>,$<C_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
-        $<$<C_COMPILER_ID:MSVC>:/W4 /O2>
+        $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /O2>
     )
 
-    # Test for kryzhovnik (if testing is enabled)
-    if(BUILD_TESTING)
+    if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/pqs_test.c")
         set_source_files_properties(${KRYZHOVNIK_DIR}/pqs_test.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_test ${KRYZHOVNIK_DIR}/pqs_test.c)
+        set_target_properties(kryzhovnik_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_test PRIVATE kryzhovnik)
-        target_compile_definitions(kryzhovnik_test PRIVATE ${CRYPTO_PQPQC_CONFIG_DEFINITIONS})
         add_test(NAME kryzhovnik_test COMMAND kryzhovnik_test)
+    endif()
+
+    if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_wrapper.c")
+        set_source_files_properties(${KRYZHOVNIK_DIR}/test_wrapper.c PROPERTIES LANGUAGE CXX)
+        add_executable(kryzhovnik_wrapper_test ${KRYZHOVNIK_DIR}/test_wrapper.c)
+        set_target_properties(kryzhovnik_wrapper_test PROPERTIES LINKER_LANGUAGE CXX)
+        target_link_libraries(kryzhovnik_wrapper_test PRIVATE kryzhovnik)
+        add_test(NAME kryzhovnik_wrapper_test COMMAND kryzhovnik_wrapper_test)
+    endif()
+
+    if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_pqs.c")
+        set_source_files_properties(${KRYZHOVNIK_DIR}/test_pqs.c PROPERTIES LANGUAGE CXX)
+        add_executable(kryzhovnik_api_test ${KRYZHOVNIK_DIR}/test_pqs.c)
+        set_target_properties(kryzhovnik_api_test PROPERTIES LINKER_LANGUAGE CXX)
+        target_link_libraries(kryzhovnik_api_test PRIVATE kryzhovnik)
+        add_test(NAME kryzhovnik_api_test COMMAND kryzhovnik_api_test)
     endif()
 else()
     message(WARNING "kryzhovnik submodule not initialized (run 'git submodule update --init')")
 endif()
 
 # -------------------------------------------------------------------
-# 4. iaik_merkle_tree (no CMakeLists.txt – build manually)
+# 5. iaik_merkle_tree (no CMakeLists.txt – build manually)
 # -------------------------------------------------------------------
 set(MERKLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/iaik_merkle_tree)
 if(EXISTS "${MERKLE_DIR}/src/merkletree.h")

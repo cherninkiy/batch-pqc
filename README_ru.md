@@ -34,6 +34,8 @@
 - Микробенчмарки: последовательная vs пакетная подпись, накладные расходы на верификацию
 - Экспорт результатов в CSV и графики
 
+Выше указана ссылка на оригинальную реализацию Крыжовника. В этом репозитории сабмодуль `third_party/kryzhovnik` зафиксирован на форке совместимости, который используется для интеграции с Hypericum и Shipovnik.
+
 ## Структура репозитория
 
 ```
@@ -42,7 +44,7 @@ batch-pqc/
 ├── third_party/            # git submodules
 │   ├── shipovnik/          → https://github.com/QAPP-tech/shipovnik_tc26
 │   ├── hypericum/          → https://github.com/QAPP-tech/hypericum_tc26
-│   ├── kryzhovnik/         → https://github.com/ElenaKirshanova/pqc_LWR_signature
+│   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 │   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
 │   ├── hash/               # провайдер хешей (Стрибог из hypericum, SHA-256 как запасной)
@@ -73,16 +75,18 @@ batch-pqc/
 git clone --recursive https://github.com/cherninkiy/batch-pqc.git
 cd batch-pqc
 
-# Сборка
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+# Синхронизация URL сабмодулей после обновления .gitmodules
+git submodule sync --recursive
+git submodule update --init --recursive
+
+# Сборка сторонних зависимостей и тестов
+./scripts/third_party.sh build
 
 # Запуск тестов
-ctest --output-on-failure
+./scripts/third_party.sh tests
 
 # Запуск бенчмарков (последовательная vs пакетная)
-./bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
+./build/bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
 ```
 
 ### Ожидаемые результаты (после MVP)
@@ -127,7 +131,8 @@ ctest --output-on-failure
 
 - [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree) – реализация дерева Меркла (public domain / BSD‑like)
 - [QAPP-tech](https://github.com/QAPP-tech) – подписи Шиповник и Гиперикум (включая хеш Стрибог)
-- [Elena Kirshanova](https://github.com/ElenaKirshanova) – подпись Крыжовник (на решётках)
+- [Elena Kirshanova](https://github.com/ElenaKirshanova) – оригинальная реализация Крыжовника: [pqc_LWR_signature](https://github.com/ElenaKirshanova/pqc_LWR_signature)
+- В этом проекте используется форк совместимости для интеграции Крыжовника с Гиперикум и Шиповник
 
 ---
 
