@@ -29,6 +29,9 @@ __pycache__/
 *.csv
 *.png
 
+# Testing
+/Testing/
+
 # Logs
 *.log
 

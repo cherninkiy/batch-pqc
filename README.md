@@ -31,6 +31,8 @@ The goal is to measure the speedup of signing a batch of messages with a single 
 - Microbenchmarks: sequential vs batch signing, verification overhead
 - Results exported as CSV + plots
 
+The original Kryzhovnik implementation is documented above. In this repository, the `third_party/kryzhovnik` submodule is pinned to a compatibility fork used for integration with Hypericum and Shipovnik.
+
 ## Repository Structure
 
 ```
@@ -38,7 +40,7 @@ batch-pqc/
 ├── third_party/            # git submodules
 │   ├── shipovnik/          → https://github.com/QAPP-tech/shipovnik_tc26
 │   ├── hypericum/          → https://github.com/QAPP-tech/hypericum_tc26
-│   ├── kryzhovnik/         → https://github.com/ElenaKirshanova/pqc_LWR_signature
+│   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 │   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
 │   ├── hash/               # hash provider (uses Streebog from hypericum, SHA-256 fallback)
@@ -68,16 +70,18 @@ batch-pqc/
 git clone --recursive https://github.com/cherninkiy/batch-pqc.git
 cd batch-pqc
 
-# Build
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+# Sync submodule URLs in case .gitmodules changed
+git submodule sync --recursive
+git submodule update --init --recursive
+
+# Build third-party dependencies and tests
+./scripts/third_party.sh build
 
 # Run tests
-ctest --output-on-failure
+./scripts/third_party.sh tests
 
 # Run benchmarks (sequential vs batch)
-./bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
+./build/bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
 ```
 
 ### Expected Output (after MVP)
@@ -121,4 +125,9 @@ Third-party components have their own licenses:
 
 - [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree) – Merkle tree implementation (public domain / BSD‑like)
 - [QAPP-tech](https://github.com/QAPP-tech) – Shipovnik and Hypericum (including Streebog hash) PQC signatures
-- [Elena Kirshanova](https://github.com/ElenaKirshanova) – Kryzhovnik (lattice‑based) signature
+- [Elena Kirshanova](https://github.com/ElenaKirshanova) – original Kryzhovnik implementation: [pqc_LWR_signature](https://github.com/ElenaKirshanova/pqc_LWR_signature)
+- A compatibility fork is used in this project to integrate Kryzhovnik with Hypericum and Shipovnik
+
+---
+
+**Warning:** This is an open-source PoC for portfolio and partnership purposes. The code is released under the MIT license. It is not intended for production use. Use at your own risk.
