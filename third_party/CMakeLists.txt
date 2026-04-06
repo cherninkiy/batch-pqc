@@ -110,7 +110,11 @@ if(TARGET streebog AND EXISTS "${SHIPOVNIK_DIR}/src/shipovnik.c")
             ${SHIPOVNIK_DIR}/src
             ${STREEBOG_DIR}
     )
-    target_compile_definitions(shipovnik PRIVATE ENTROPY_SOURCE="${ENTROPY_SOURCE}")
+    target_compile_definitions(shipovnik PRIVATE
+        ENTROPY_SOURCE="${ENTROPY_SOURCE}"
+        randombytes=shipovnik_randombytes
+        secure_erase=shipovnik_secure_erase
+    )
     target_link_libraries(shipovnik PRIVATE streebog)
 
     add_executable(shipovnik_example ${SHIPOVNIK_DIR}/shipovnik_example.c)
@@ -124,6 +128,24 @@ endif()
 # -------------------------------------------------------------------
 set(KRYZHOVNIK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/kryzhovnik)
 if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
+    set(KRYZHOVNIK_PARAMSET "medium" CACHE STRING "Select a kryzhovnik parameter set")
+    set_property(CACHE KRYZHOVNIK_PARAMSET PROPERTY STRINGS "small" "medium" "large" "debug")
+    if(NOT KRYZHOVNIK_PARAMSET)
+        set(KRYZHOVNIK_PARAMSET "medium")
+    endif()
+    if(NOT KRYZHOVNIK_PARAMSET STREQUAL "small" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "medium" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "large" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "debug")
+        message(FATAL_ERROR "Unsupported KRYZHOVNIK_PARAMSET='${KRYZHOVNIK_PARAMSET}'. Use: small, medium, large, debug")
+    endif()
+    message(STATUS "Using Kryzhovnik parameter set ${KRYZHOVNIK_PARAMSET}")
+
+    configure_file(
+        ${KRYZHOVNIK_DIR}/current-params.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kryzhovnik/current-params.h
+    )
+
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(OPENSSL QUIET IMPORTED_TARGET libcrypto)
@@ -148,38 +170,32 @@ if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
         list(APPEND KRYZHOVNIK_SOURCES ${KRYZHOVNIK_DIR}/kryzhovnik_wrapper.c)
     endif()
 
-    set_source_files_properties(${KRYZHOVNIK_SOURCES} PROPERTIES LANGUAGE CXX)
     add_library(kryzhovnik STATIC ${KRYZHOVNIK_SOURCES})
-    set_target_properties(kryzhovnik PROPERTIES LINKER_LANGUAGE CXX)
     target_include_directories(kryzhovnik PUBLIC
         $<BUILD_INTERFACE:${KRYZHOVNIK_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/kryzhovnik>
     )
     target_link_libraries(kryzhovnik PRIVATE ${KRYZHOVNIK_OPENSSL_TARGET})
     target_compile_options(kryzhovnik PRIVATE
-        $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
-        $<$<CXX_COMPILER_ID:MSVC>:/W4 /O2>
+        $<$<OR:$<C_COMPILER_ID:GNU>,$<C_COMPILER_ID:Clang>>:-Wall -Wextra -Wshadow -Wconversion -O3 -march=native>
+        $<$<C_COMPILER_ID:MSVC>:/W4 /O2>
     )
+    target_compile_features(kryzhovnik PRIVATE c_std_99)
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/pqs_test.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/pqs_test.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_test ${KRYZHOVNIK_DIR}/pqs_test.c)
-        set_target_properties(kryzhovnik_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_test COMMAND kryzhovnik_test)
     endif()
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_wrapper.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/test_wrapper.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_wrapper_test ${KRYZHOVNIK_DIR}/test_wrapper.c)
-        set_target_properties(kryzhovnik_wrapper_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_wrapper_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_wrapper_test COMMAND kryzhovnik_wrapper_test)
     endif()
 
     if(BUILD_TESTING AND EXISTS "${KRYZHOVNIK_DIR}/test_pqs.c")
-        set_source_files_properties(${KRYZHOVNIK_DIR}/test_pqs.c PROPERTIES LANGUAGE CXX)
         add_executable(kryzhovnik_api_test ${KRYZHOVNIK_DIR}/test_pqs.c)
-        set_target_properties(kryzhovnik_api_test PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(kryzhovnik_api_test PRIVATE kryzhovnik)
         add_test(NAME kryzhovnik_api_test COMMAND kryzhovnik_api_test)
     endif()

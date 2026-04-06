@@ -1,5 +1,5 @@
 # Build artifacts
-/build/
+/build*/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
@@ -55,3 +55,6 @@ __pycache__/
 *~
 .DS_Store
 Thumbs.db
+
+#Environment files
+.env
