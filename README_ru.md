@@ -100,6 +100,10 @@ cmake -S . -B build \
 cmake --build build --parallel
 ```
 
+Поддерживаемые значения для Hypericum: `b_256_64`, `m_256_64`, `b_256_20`, `m_256_20`, `b_128_20`, `m_128_20`, `debug`.
+
+`debug` — агрессивный исследовательский профиль, ориентированный на скорость для benchmark/diagnostics.
+
 Поддерживаемые значения для Kryzhovnik: `small`, `medium`, `large`, `debug`.
 
 `debug` предназначен для быстрой диагностики и отладки, а не для оценки стойкости.
@@ -110,7 +114,7 @@ cmake --build build --parallel
 ./scripts/benchmark.sh \
   --algo kryzhovnik \
   --kryzhovnik-params small \
-  --hypericum-params m_128_20
+  --hypericum-params debug
 ```
 
 Примечание: константы Kryzhovnik для `small/medium/large` синхронизированы со скриптом `security.sage`; перед production-использованием их нужно дополнительно верифицировать по официальной спецификации.
