@@ -7,11 +7,98 @@ on:
     branches: [ main, dev ]
 
 jobs:
-  check-repo:
+  build-test-smoke:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: debug-fast
+            hypericum_paramset: debug
+            kryzhovnik_paramset: debug
+          - name: baseline-medium
+            hypericum_paramset: m_128_20
+            kryzhovnik_paramset: medium
+    timeout-minutes: 25
     steps:
       - name: Checkout repository with submodules
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libcppunit-dev
+
+      - name: Configure (${{ matrix.name }})
+        run: |
+          cmake -S . -B build-${{ matrix.name }} \
+            -DHYPERICUM_PARAMSET=${{ matrix.hypericum_paramset }} \
+            -DKRYZHOVNIK_PARAMSET=${{ matrix.kryzhovnik_paramset }}
+
+      - name: Build (${{ matrix.name }})
+        run: |
+          cmake --build build-${{ matrix.name }} --parallel
+
+      - name: CTest core checks (${{ matrix.name }})
+        run: |
+          ctest --test-dir build-${{ matrix.name }} \
+            --output-on-failure \
+            -R 'kryzhovnik|adapters_smoke|merkletree_test'
+
+      - name: Benchmark smoke (${{ matrix.name }})
+        run: |
+          ./build-${{ matrix.name }}/bench/bench_seq \
+            --algo hypericum \
+            --params ${{ matrix.hypericum_paramset }} \
+            --batch-size 1 \
+            --iters 1 \
+            --verify 1 \
+            --out-csv /tmp/h_${{ matrix.name }}.csv \
+            --out-json /tmp/h_${{ matrix.name }}.json
+
+          ./build-${{ matrix.name }}/bench/bench_seq \
+            --algo shipovnik \
+            --params default \
+            --batch-size 1 \
+            --iters 1 \
+            --verify 1 \
+            --out-csv /tmp/s_${{ matrix.name }}.csv \
+            --out-json /tmp/s_${{ matrix.name }}.json
+
+          ./build-${{ matrix.name }}/bench/bench_seq \
+            --algo kryzhovnik \
+            --params ${{ matrix.kryzhovnik_paramset }} \
+            --batch-size 1 \
+            --iters 1 \
+            --verify 1 \
+            --out-csv /tmp/k_${{ matrix.name }}.csv \
+            --out-json /tmp/k_${{ matrix.name }}.json
+
+  benchmark-script-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Verify benchmark script CLI and dry-run
+        run: |
+          bash scripts/benchmark.sh --help
+          bash scripts/benchmark.sh \
+            --dry-run \
+            --algo hypericum \
+            --batch-sizes 1 \
+            --iters 1 \
+            --verify 1 \
+            --hypericum-params debug \
+            --kryzhovnik-params debug
 
