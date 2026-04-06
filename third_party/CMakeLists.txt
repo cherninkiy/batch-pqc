@@ -110,7 +110,11 @@ if(TARGET streebog AND EXISTS "${SHIPOVNIK_DIR}/src/shipovnik.c")
             ${SHIPOVNIK_DIR}/src
             ${STREEBOG_DIR}
     )
-    target_compile_definitions(shipovnik PRIVATE ENTROPY_SOURCE="${ENTROPY_SOURCE}")
+    target_compile_definitions(shipovnik PRIVATE
+        ENTROPY_SOURCE="${ENTROPY_SOURCE}"
+        randombytes=shipovnik_randombytes
+        secure_erase=shipovnik_secure_erase
+    )
     target_link_libraries(shipovnik PRIVATE streebog)
 
     add_executable(shipovnik_example ${SHIPOVNIK_DIR}/shipovnik_example.c)
