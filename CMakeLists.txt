@@ -8,3 +8,9 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(third_party)
+add_subdirectory(src)
+add_subdirectory(bench)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
