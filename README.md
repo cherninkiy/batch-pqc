@@ -84,6 +84,32 @@ git submodule update --init --recursive
 ./build/bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
 ```
 
+### Paramset Selection
+
+Both Hypericum and Kryzhovnik support build-time paramset selection via CMake.
+
+```bash
+cmake -S . -B build \
+  -DHYPERICUM_PARAMSET=m_128_20 \
+  -DKRYZHOVNIK_PARAMSET=medium
+cmake --build build --parallel
+```
+
+Supported Kryzhovnik values: `small`, `medium`, `large`, `debug`.
+
+`debug` is intended for fast diagnostics and troubleshooting, not security evaluation.
+
+The benchmark helper script also supports separate flags:
+
+```bash
+./scripts/benchmark.sh \
+  --algo kryzhovnik \
+  --kryzhovnik-params small \
+  --hypericum-params m_128_20
+```
+
+Note: Kryzhovnik constants are aligned with `security.sage` for `small/medium/large`. Keep validating against the official specification before production use.
+
 ### Expected Output (after MVP)
 
 After running benchmarks, the `results/` directory will contain:

@@ -128,6 +128,24 @@ endif()
 # -------------------------------------------------------------------
 set(KRYZHOVNIK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/kryzhovnik)
 if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
+    set(KRYZHOVNIK_PARAMSET "medium" CACHE STRING "Select a kryzhovnik parameter set")
+    set_property(CACHE KRYZHOVNIK_PARAMSET PROPERTY STRINGS "small" "medium" "large" "debug")
+    if(NOT KRYZHOVNIK_PARAMSET)
+        set(KRYZHOVNIK_PARAMSET "medium")
+    endif()
+    if(NOT KRYZHOVNIK_PARAMSET STREQUAL "small" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "medium" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "large" AND
+       NOT KRYZHOVNIK_PARAMSET STREQUAL "debug")
+        message(FATAL_ERROR "Unsupported KRYZHOVNIK_PARAMSET='${KRYZHOVNIK_PARAMSET}'. Use: small, medium, large, debug")
+    endif()
+    message(STATUS "Using Kryzhovnik parameter set ${KRYZHOVNIK_PARAMSET}")
+
+    configure_file(
+        ${KRYZHOVNIK_DIR}/current-params.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kryzhovnik/current-params.h
+    )
+
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(OPENSSL QUIET IMPORTED_TARGET libcrypto)
@@ -155,6 +173,7 @@ if(EXISTS "${KRYZHOVNIK_DIR}/sign.c")
     add_library(kryzhovnik STATIC ${KRYZHOVNIK_SOURCES})
     target_include_directories(kryzhovnik PUBLIC
         $<BUILD_INTERFACE:${KRYZHOVNIK_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/kryzhovnik>
     )
     target_link_libraries(kryzhovnik PRIVATE ${KRYZHOVNIK_OPENSSL_TARGET})
     target_compile_options(kryzhovnik PRIVATE

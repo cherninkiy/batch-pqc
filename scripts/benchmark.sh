@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
 OUTPUT_DIR="${ROOT_DIR}/results/bench-$(date +%Y%m%d-%H%M%S)"
 ALGOS="all"
-PARAMS="m_128_20"
+HYPERICUM_PARAMS="m_128_20"
+KRYZHOVNIK_PARAMS="medium"
 BATCH_SIZES="1,2,4,8,16,32,64"
 ITERS=100
 MSG_SIZE=1024
@@ -18,10 +19,10 @@ usage() {
     cat <<EOF
 Usage: ./scripts/benchmark.sh [options]
     --algo <all|shipovnik|hypericum|kryzhovnik>
-    --params 
-        hypericum: <b_256_64|m_256_64|...> (default: m_128_20)
-        shipovnik: <not used>
-        kryzhovnik: <not used>
+    --hypericum-params <b_256_64|m_256_64|...> (default: m_128_20)
+    --kryzhovnik-params <small|medium|large|debug>   (default: medium)
+    --params <value>                           (legacy: sets hypericum;
+                                               also sets kryzhovnik when value is small|medium|large)
         
   --batch-sizes <comma-separated list>   (default: 1,2,4,8,16,32,64)
   --iters <n>                             (default: 100)
@@ -46,7 +47,20 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --params)
-            PARAMS="$2"
+            HYPERICUM_PARAMS="$2"
+            case "$2" in
+                small|medium|large|debug)
+                    KRYZHOVNIK_PARAMS="$2"
+                    ;;
+            esac
+            shift 2
+            ;;
+        --hypericum-params)
+            HYPERICUM_PARAMS="$2"
+            shift 2
+            ;;
+        --kryzhovnik-params)
+            KRYZHOVNIK_PARAMS="$2"
             shift 2
             ;;
         --iters)
@@ -98,11 +112,14 @@ mkdir -p "$OUTPUT_DIR"
 echo "[benchmark] root:      $ROOT_DIR"
 echo "[benchmark] build dir: $BUILD_DIR"
 echo "[benchmark] output:    $OUTPUT_DIR"
-echo "[benchmark] params:    $PARAMS"
+echo "[benchmark] hypericum: $HYPERICUM_PARAMS"
+echo "[benchmark] kryzhovnik:$KRYZHOVNIK_PARAMS"
 echo "[benchmark] skip:      $SKIP_EXISTING"
 
 auto_configure_build() {
-    cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -DHYPERICUM_PARAMSET=$PARAMS
+    cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
+        -DHYPERICUM_PARAMSET="$HYPERICUM_PARAMS" \
+        -DKRYZHOVNIK_PARAMSET="$KRYZHOVNIK_PARAMS"
     cmake --build "$BUILD_DIR" --parallel
 }
 
@@ -113,6 +130,16 @@ run_one() {
     local json_out="$OUTPUT_DIR/${algo}_b${batch_size}.json"
     local csv_tmp="$csv_out.tmp"
     local json_tmp="$json_out.tmp"
+    local params_label="default"
+
+    case "$algo" in
+        hypericum)
+            params_label="$HYPERICUM_PARAMS"
+            ;;
+        kryzhovnik)
+            params_label="$KRYZHOVNIK_PARAMS"
+            ;;
+    esac
 
     if [[ "$SKIP_EXISTING" -eq 1 ]]; then
         if [[ -s "$csv_out" && -s "$json_out" ]]; then
@@ -136,7 +163,7 @@ run_one() {
         --iters "$ITERS"
         --msg-size "$MSG_SIZE"
         --seed "$SEED"
-        --params "$PARAMS"
+        --params "$params_label"
         --verify "$VERIFY"
         --out-csv "$csv_tmp"
         --out-json "$json_tmp"
@@ -153,7 +180,7 @@ run_one() {
 }
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] cmake -S $ROOT_DIR -B $BUILD_DIR -DHYPERICUM_PARAMSET=$PARAMS"
+    echo "[dry-run] cmake -S $ROOT_DIR -B $BUILD_DIR -DHYPERICUM_PARAMSET=$HYPERICUM_PARAMS -DKRYZHOVNIK_PARAMSET=$KRYZHOVNIK_PARAMS"
     echo "[dry-run] cmake --build $BUILD_DIR --parallel"
 else
     auto_configure_build
