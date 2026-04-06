@@ -17,7 +17,9 @@ bb_status bb_kryzhovnik_keygen(
         return BB_BUFFER_TOO_SMALL;
     }
 
-    kryzhovnik_generate_keys(sk, pk);
+    if (kryzhovnik_keygen(sk, sk_capacity, pk, pk_capacity) != KRYZHOVNIK_OK) {
+        return BB_INTERNAL;
+    }
     *sk_len = (size_t)KRYZHOVNIK_SECRET_KEY_BYTES;
     *pk_len = (size_t)KRYZHOVNIK_PUBLIC_KEY_BYTES;
     return BB_OK;
@@ -44,7 +46,10 @@ bb_status bb_kryzhovnik_sign(
         return BB_BUFFER_TOO_SMALL;
     }
 
-    kryzhovnik_sign(sk, pk, msg, msg_len, sig, sig_len);
+    if (kryzhovnik_sign(sk, sk_len, pk, pk_len, msg, msg_len,
+                        sig, sig_capacity, sig_len) != KRYZHOVNIK_OK) {
+        return BB_INTERNAL;
+    }
     return BB_OK;
 }
 
@@ -65,5 +70,12 @@ bb_status bb_kryzhovnik_verify(
         return BB_INVALID_SIG;
     }
 
-    return kryzhovnik_verify(pk, sig, msg, msg_len) == 0 ? BB_OK : BB_INVALID_SIG;
+    switch (kryzhovnik_verify(pk, pk_len, sig, sig_len, msg, msg_len)) {
+        case KRYZHOVNIK_OK:
+            return BB_OK;
+        case KRYZHOVNIK_VERIFY_FAIL:
+            return BB_INVALID_SIG;
+        default:
+            return BB_BAD_ARG;
+    }
 }
