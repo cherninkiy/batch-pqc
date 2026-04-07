@@ -12,9 +12,9 @@
 
 This project demonstrates **batch signing** (Merkle tree based) for three Russian post-quantum signature schemes:
 
-- **Shipovnik** (based on Stern protocol)
-- **Hypericum** (stateless, based on SPHINCS+, uses **Streebog** hash function from its own implementation)
-- **Kryzhovnik** (lattice-based, similar to Dilithium)
+- [Shipovnik](https://github.com/QAPP-tech/shipovnik_tc26) (based on Stern protocol)
+- [Hypericum](https://github.com/QAPP-tech/hypericum_tc26) (stateless, based on SPHINCS+, uses **Streebog** hash function from its own implementation)
+- [Kryzhovnik](https://github.com/ElenaKirshanova/pqc_LWR_signature) (lattice-based, similar to Dilithium)
 
 The goal is to measure the speedup of signing a batch of messages with a single root signature + proofs, compared to sequential signing. The results will help to assess the feasibility of batch signing in high-load PKI systems.
 
@@ -22,31 +22,46 @@ The goal is to measure the speedup of signing a batch of messages with a single 
 
 ## Features
 
-- Generic Merkle tree implementation (wrapper around [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
-- Hash abstraction layer (supports **Streebog** via Hypericum implementation, SHA-256 for fallback/testing)
-- Signature abstraction layer for:
-  - Russian PQC: [Shipovnik](https://github.com/QAPP-tech/shipovnik_tc26), [Hypericum](https://github.com/QAPP-tech/hypericum_tc26), [Kryzhovnik](https://github.com/ElenaKirshanova/pqc_LWR_signature)
-  - (planned) ML-DSA (FIPS 204) via liboqs
-- Batch signing and verification API
-- Microbenchmarks: sequential vs batch signing, verification overhead
-- Results exported as CSV + plots
+- (planned) Generic Merkle tree implementation (wrapper around [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
+- (planned) Hash abstraction layer (supports **Streebog** via Hypericum implementation, SHA-256 for fallback/testing)
+- Signature abstraction layer for Russian PQC:
+  - [Shipovnik](https://github.com/QAPP-tech/shipovnik_tc26)
+  - [Hypericum](https://github.com/QAPP-tech/hypericum_tc26)
+  - [Kryzhovnik](https://github.com/ElenaKirshanova/pqc_LWR_signature)
+- Sequential benchmark (`bench_seq`) with configurable paramsets, verification pass, and warmup iterations
+- Test suite with unified `test_*` naming in CTest
 
-The original Kryzhovnik implementation is documented above. In this repository, the `third_party/kryzhovnik` submodule is pinned to a compatibility fork used for integration with Hypericum and Shipovnik.
+## Original Repos and Forks
+
+Algorithm links in this README always point to original repositories:
+
+- Shipovnik (original): https://github.com/QAPP-tech/shipovnik_tc26
+- Hypericum (original): https://github.com/QAPP-tech/hypericum_tc26
+- Kryzhovnik (original): https://github.com/ElenaKirshanova/pqc_LWR_signature
+
+This project currently integrates wrapper/compatibility forks as submodules:
+
+- https://github.com/cherninkiy/shipovnik-wrapper-tc26
+- https://github.com/cherninkiy/hypericum-wrapper-tc26
+- https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
+
+Why forks are used:
+
+- To add integration-oriented APIs required by this project (detached and status-return wrappers)
+- To keep adapter contracts consistent across all three algorithms
+- To preserve reproducible pinned revisions for CI and local builds
 
 ## Repository Structure
 
 ```
 batch-pqc/
 ├── third_party/            # git submodules
-│   ├── shipovnik/          → https://github.com/QAPP-tech/shipovnik_tc26
-│   ├── hypericum/          → https://github.com/QAPP-tech/hypericum_tc26
+│   ├── shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
+│   ├── hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 │   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 │   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
-│   ├── hash/               # hash provider (uses Streebog from hypericum, SHA-256 fallback)
 │   ├── signature/          # signature provider adapters
-│   ├── merkle/             # Merkle wrapper over IAIK
-│   ├── batch/              # batch signing logic
 │   └── utils/              # timers, message generators
 ├── bench/                  # benchmarking executables
 ├── tests/                  # unit tests (CTest)
@@ -80,8 +95,8 @@ git submodule update --init --recursive
 # Run tests
 ./scripts/third_party.sh tests
 
-# Run benchmarks (sequential vs batch)
-./build/bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
+# Run benchmark (sequential signing)
+./build/bench/bench_seq --algo hypericum --batch-size 16 --iters 100 --verify 1
 ```
 
 ### Paramset Selection
@@ -123,12 +138,13 @@ After running benchmarks, the `results/` directory will contain:
 
 ## Current Status (MVP)
 
-- [ ] Repository structure with submodules
-- [ ] Hash abstraction + Streebog integration (from hypericum)
-- [ ] Merkle tree wrapper (uses IAIK tree)
-- [ ] Batch signer/verifier with null signature (test mode)
-- [ ] Adapters for real PQC algorithms (in progress: Hypericum first)
-- [ ] Full benchmark suite with results
+- [x] Repository structure with submodules
+- [x] Adapters for Shipovnik / Hypericum / Kryzhovnik with unified `bb_status`
+- [x] Detached/status-return integration APIs wired through wrapper submodules
+- [x] Sequential benchmark `bench_seq` with warmup and corrected signature-size metric
+- [x] Test coverage: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkletree`
+- [ ] Merkle-based batch signer/verifier implementation
+- [ ] Sequential vs real batch signing benchmark comparison
 - [ ] Final report (PDF)
 
 **MVP is being developed in `dev` branch. After completion, a Pull Request to `main` will be opened for review.**

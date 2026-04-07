@@ -14,9 +14,9 @@
 
 Этот проект демонстрирует **пакетную подпись** (на основе дерева Меркла) для трёх российских пост-квантовых схем подписи:
 
-- **Шиповник** (на основе протокола Штерна)
-- **Гиперикум** (stateless, на основе SPHINCS+, использует хеш-функцию **Стрибог** из своей реализации)
-- **Крыжовник** (на основе решёток, аналог Dilithium)
+- [Шиповник](https://github.com/QAPP-tech/shipovnik_tc26) (на основе протокола Штерна)
+- [Гиперикум](https://github.com/QAPP-tech/hypericum_tc26) (stateless, на основе SPHINCS+, использует хеш-функцию **Стрибог** из своей реализации)
+- [Крыжовник](https://github.com/ElenaKirshanova/pqc_LWR_signature) (на основе решёток, аналог Dilithium)
 
 Цель — измерить ускорение при подписи пакета сообщений с помощью одной подписи корня дерева + доказательств по сравнению с последовательной подписью. Результаты помогут оценить применимость пакетной подписи в высоконагруженных PKI-системах.
 
@@ -25,16 +25,34 @@
 ## Возможности
 
 
-- Реализация дерева Меркла (обёртка над [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
-- Слой абстракции хеш-функций (поддерживает **Стрибог** через реализацию Hypericum, SHA-256 для тестов)
-- Слой абстракции подписей:
-  - Российские PQC: [Шиповник](https://github.com/QAPP-tech/shipovnik_tc26), [Гиперикум](https://github.com/QAPP-tech/hypericum_tc26), [Крыжовник](https://github.com/ElenaKirshanova/pqc_LWR_signature)
-  - (планируется) ML-DSA (FIPS 204) через liboqs
-- API для пакетной подписи и верификации
-- Микробенчмарки: последовательная vs пакетная подпись, накладные расходы на верификацию
-- Экспорт результатов в CSV и графики
+- (планируется) Реализация дерева Меркла (обёртка над [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
+- (планируется) Слой абстракции хеш-функций (поддерживает **Стрибог** через реализацию Hypericum, SHA-256 для тестов)
+- Слой абстракции подписей для российских PQC:
+  - [Шиповник](https://github.com/QAPP-tech/shipovnik_tc26)
+  - [Гиперикум](https://github.com/QAPP-tech/hypericum_tc26)
+  - [Крыжовник](https://github.com/ElenaKirshanova/pqc_LWR_signature)
+- Последовательный бенчмарк (`bench_seq`) с параметрами paramset, verify-проходом и прогревочными итерациями
+- Набор тестов с унифицированными именами `test_*` в CTest
 
-Выше указана ссылка на оригинальную реализацию Крыжовника. В этом репозитории сабмодуль `third_party/kryzhovnik` зафиксирован на форке совместимости, который используется для интеграции с Hypericum и Shipovnik.
+## Оригинальные репозитории и форки
+
+Ссылки на алгоритмы в этом README всегда ведут на оригинальные репозитории:
+
+- Шиповник (оригинал): https://github.com/QAPP-tech/shipovnik_tc26
+- Гиперикум (оригинал): https://github.com/QAPP-tech/hypericum_tc26
+- Крыжовник (оригинал): https://github.com/ElenaKirshanova/pqc_LWR_signature
+
+В проекте как сабмодули используются интеграционные/совместимые форки:
+
+- https://github.com/cherninkiy/shipovnik-wrapper-tc26
+- https://github.com/cherninkiy/hypericum-wrapper-tc26
+- https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
+
+Зачем используются форки:
+
+- Для добавления интеграционных API, необходимых проекту (detached и status-return обёртки)
+- Для унификации контрактов адаптеров между тремя алгоритмами
+- Для воспроизводимых зафиксированных ревизий в CI и локальной сборке
 
 ## Структура репозитория
 
@@ -42,15 +60,12 @@
 batch-pqc/
 
 ├── third_party/            # git submodules
-│   ├── shipovnik/          → https://github.com/QAPP-tech/shipovnik_tc26
-│   ├── hypericum/          → https://github.com/QAPP-tech/hypericum_tc26
+│   ├── shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
+│   ├── hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 │   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 │   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
-│   ├── hash/               # провайдер хешей (Стрибог из hypericum, SHA-256 как запасной)
 │   ├── signature/          # адаптеры для алгоритмов подписи
-│   ├── merkle/             # обёртка Merkle над IAIK
-│   ├── batch/              # логика пакетной подписи
 │   └── utils/              # таймеры, генераторы сообщений
 ├── bench/                  # исполняемые файлы бенчмарков
 ├── tests/                  # модульные тесты (CTest)
@@ -85,8 +100,8 @@ git submodule update --init --recursive
 # Запуск тестов
 ./scripts/third_party.sh tests
 
-# Запуск бенчмарков (последовательная vs пакетная)
-./build/bench/bench_batch --algo hypericum --batch-size 16 --iterations 100
+# Запуск бенчмарка (последовательная подпись)
+./build/bench/bench_seq --algo hypericum --batch-size 16 --iters 100 --verify 1
 ```
 
 ### Выбор paramset
@@ -128,12 +143,13 @@ cmake --build build --parallel
 
 ## Текущий статус (MVP)
 
-- [ ] Структура репозитория с субмодулями
-- [ ] Абстракция хешей + интеграция Стрибога (из hypericum)
-- [ ] Обёртка Merkle дерева (использует IAIK)
-- [ ] Пакетная подпись/верификация с нулевой подписью (тестовый режим)
-- [ ] Адаптеры для реальных PQC-алгоритмов (в процессе: сначала Гиперикум)
-- [ ] Полный набор бенчмарков с результатами
+- [x] Структура репозитория с субмодулями
+- [x] Адаптеры для Шиповника / Гиперикума / Крыжовника с единым `bb_status`
+- [x] Подключены detached/status-return API через wrapper-сабмодули
+- [x] Последовательный бенчмарк `bench_seq` с warmup и исправленной метрикой размера подписей
+- [x] Покрытие тестами: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkletree`
+- [ ] Реализация пакетной подписи/верификации на основе дерева Меркла
+- [ ] Сравнение бенчмарков: последовательная vs реальная пакетная подпись
 - [ ] Финальный отчёт (PDF)
 
 **MVP разрабатывается в ветке `dev`. После завершения будет открыт Pull Request в `main` для ревью.**

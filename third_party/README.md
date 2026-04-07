@@ -2,13 +2,24 @@
 
 This directory contains git submodules for cryptographic primitives and Merkle tree logic used in batch-pqc.
 
-- shipovnik/          → https://github.com/QAPP-tech/shipovnik_tc26
-- hypericum/          → https://github.com/QAPP-tech/hypericum_tc26
+Original algorithm repositories:
+
+- Shipovnik: https://github.com/QAPP-tech/shipovnik_tc26
+- Hypericum: https://github.com/QAPP-tech/hypericum_tc26
+- Kryzhovnik: https://github.com/ElenaKirshanova/pqc_LWR_signature
+
+Current submodule remotes used by this project:
+
+- shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
+- hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 - kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 - iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 
-The original Kryzhovnik repository is https://github.com/ElenaKirshanova/pqc_LWR_signature.
-This project uses a compatibility fork for the `third_party/kryzhovnik` submodule to keep compatibility with hypericum and shipovnik.
+Fork rationale:
+
+- Add integration-oriented APIs (detached/status-return wrappers)
+- Keep adapter contracts consistent across all algorithms
+- Preserve reproducible pinned revisions for CI and local builds
 
 To initialize all submodules:
 
