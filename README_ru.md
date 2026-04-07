@@ -25,8 +25,10 @@
 ## Возможности
 
 
-- (планируется) Реализация дерева Меркла (обёртка над [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
-- (планируется) Слой абстракции хеш-функций (поддерживает **Стрибог** через реализацию Hypericum, SHA-256 для тестов)
+- Реализация дерева Меркла в `src/merkle`
+- Ядро пакетной подписи в `src/batch_signing*`
+- Формат пакетной подписи: `подпись_корня + список_доказательств` (с метаданными для сериализации)
+- Слой абстракции хеш-функций (поддерживает **Стрибог** и тестовые hash-backend'ы)
 - Слой абстракции подписей для российских PQC:
   - [Шиповник](https://github.com/QAPP-tech/shipovnik_tc26)
   - [Гиперикум](https://github.com/QAPP-tech/hypericum_tc26)
@@ -63,9 +65,14 @@ batch-pqc/
 │   ├── shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
 │   ├── hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 │   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
-│   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
 │   ├── signature/          # адаптеры для алгоритмов подписи
+│   ├── batch_bench.h       # единый контракт адаптеров (bb_status, bb_algorithm)
+│   ├── merkle/             # реализация дерева Меркла
+│   ├── batch_signing.h     # API пакетной подписи
+│   ├── batch_signing.c     # реализация пакетной подписи
+│   ├── batch_signing_adapters.h
+│   ├── batch_signing_adapters.c
 │   └── utils/              # таймеры, генераторы сообщений
 ├── bench/                  # исполняемые файлы бенчмарков
 ├── tests/                  # модульные тесты (CTest)
@@ -147,8 +154,8 @@ cmake --build build --parallel
 - [x] Адаптеры для Шиповника / Гиперикума / Крыжовника с единым `bb_status`
 - [x] Подключены detached/status-return API через wrapper-сабмодули
 - [x] Последовательный бенчмарк `bench_seq` с warmup и исправленной метрикой размера подписей
-- [x] Покрытие тестами: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkletree`
-- [ ] Реализация пакетной подписи/верификации на основе дерева Меркла
+- [x] Реализация пакетной подписи/верификации на основе дерева Меркла
+- [x] Покрытие тестами: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkle`, `test_batch_signing`, `test_streebog`
 - [ ] Сравнение бенчмарков: последовательная vs реальная пакетная подпись
 - [ ] Финальный отчёт (PDF)
 
@@ -170,12 +177,10 @@ cmake --build build --parallel
 
 Сторонние компоненты имеют свои лицензии:
 
-- `iaik_merkle_tree` – public domain / BSD-like
 - Реализации PQC – смотрите лицензии в каждом субмодуле
 
 ## Благодарности
 
-- [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree) – реализация дерева Меркла (public domain / BSD‑like)
 - [QAPP-tech](https://github.com/QAPP-tech) – подписи Шиповник и Гиперикум (включая хеш Стрибог)
 - [Elena Kirshanova](https://github.com/ElenaKirshanova) – оригинальная реализация Крыжовника: [pqc_LWR_signature](https://github.com/ElenaKirshanova/pqc_LWR_signature)
 - В этом проекте используется форк совместимости для интеграции Крыжовника с Гиперикум и Шиповник
