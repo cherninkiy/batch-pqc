@@ -50,7 +50,7 @@ jobs:
         run: |
           ctest --test-dir build-${{ matrix.name }} \
             --output-on-failure \
-            -R 'kryzhovnik|adapters_smoke|adapters_batch|merkletree'
+            -R 'kryzhovnik|test_adapters_smoke|test_adapters_batch|merkletree'
 
       - name: Benchmark smoke (${{ matrix.name }})
         run: |
