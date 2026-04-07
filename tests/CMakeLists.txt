@@ -24,7 +24,7 @@ add_test(NAME test_merkle COMMAND test_merkle)
 
 add_executable(test_batch_signing test_batch_signing.c)
 
-target_link_libraries(test_batch_signing PRIVATE batch_signing_core)
+target_link_libraries(test_batch_signing PRIVATE batch_adapters)
 
 target_compile_features(test_batch_signing PRIVATE c_std_99)
 

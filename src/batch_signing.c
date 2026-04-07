@@ -29,7 +29,6 @@ struct batch_signer {
     size_t root_sig_capacity;
     batch_hash_fn hash;
     batch_sign_fn sign;
-    batch_verify_fn verify;
     void* user_ctx;
 
     uint8_t** messages;
@@ -50,11 +49,15 @@ struct batch_signature {
     size_t num_proofs;
 };
 
+/* Encode/decode uint32_t in little-endian byte order for a stable wire format. */
 static int write_u32(uint8_t** ptr, const uint8_t* end, uint32_t value) {
     if ((size_t)(end - *ptr) < sizeof(uint32_t)) {
         return -1;
     }
-    memcpy(*ptr, &value, sizeof(uint32_t));
+    (*ptr)[0] = (uint8_t)(value);
+    (*ptr)[1] = (uint8_t)(value >> 8);
+    (*ptr)[2] = (uint8_t)(value >> 16);
+    (*ptr)[3] = (uint8_t)(value >> 24);
     *ptr += sizeof(uint32_t);
     return 0;
 }
@@ -63,7 +66,10 @@ static int read_u32(const uint8_t** ptr, const uint8_t* end, uint32_t* out) {
     if ((size_t)(end - *ptr) < sizeof(uint32_t)) {
         return -1;
     }
-    memcpy(out, *ptr, sizeof(uint32_t));
+    *out = (uint32_t)((*ptr)[0])
+         | (uint32_t)((*ptr)[1]) << 8
+         | (uint32_t)((*ptr)[2]) << 16
+         | (uint32_t)((*ptr)[3]) << 24;
     *ptr += sizeof(uint32_t);
     return 0;
 }
@@ -121,7 +127,6 @@ batch_signer_t* batch_signer_create(size_t hash_size,
                                     size_t root_sig_capacity,
                                     batch_hash_fn hash,
                                     batch_sign_fn sign,
-                                    batch_verify_fn verify,
                                     void* user_ctx) {
     if (hash_size == 0 || root_sig_capacity == 0 || hash == NULL || sign == NULL) {
         return NULL;
@@ -136,7 +141,6 @@ batch_signer_t* batch_signer_create(size_t hash_size,
     ctx->root_sig_capacity = root_sig_capacity;
     ctx->hash = hash;
     ctx->sign = sign;
-    ctx->verify = verify;
     ctx->user_ctx = user_ctx;
     ctx->capacity = 16;
 
@@ -178,12 +182,15 @@ int batch_signer_add_message(batch_signer_t* ctx, const uint8_t* msg, size_t msg
         }
     }
 
-    uint8_t* copy = (uint8_t*)malloc(msg_len);
-    if (copy == NULL) {
-        return -1;
+    uint8_t* copy = NULL;
+    if (msg_len > 0) {
+        copy = (uint8_t*)malloc(msg_len);
+        if (copy == NULL) {
+            return -1;
+        }
+        memcpy(copy, msg, msg_len);
     }
 
-    memcpy(copy, msg, msg_len);
     ctx->messages[ctx->num_msgs] = copy;
     ctx->msg_lens[ctx->num_msgs] = msg_len;
     ctx->num_msgs++;
@@ -238,19 +245,19 @@ batch_signature_t* batch_signer_sign(batch_signer_t* ctx) {
     }
     
     for (size_t i = 0; i < ctx->num_msgs; ++i) {
-            if (merkle_tree_set_leaf(tree, i, leaf_hashes[i]) != 0) {
-                merkle_tree_destroy(tree);
-                for (size_t j = 0; j < ctx->num_msgs; ++j) free(leaf_hashes[j]);
-                free(leaf_hashes);
-                return NULL;
-            }
-    }
-        if (merkle_tree_build(tree) != 0) {
+        if (merkle_tree_set_leaf(tree, i, leaf_hashes[i]) != 0) {
             merkle_tree_destroy(tree);
-            for (size_t i = 0; i < ctx->num_msgs; ++i) free(leaf_hashes[i]);
+            for (size_t j = 0; j < ctx->num_msgs; ++j) free(leaf_hashes[j]);
             free(leaf_hashes);
             return NULL;
         }
+    }
+    if (merkle_tree_build(tree) != 0) {
+        merkle_tree_destroy(tree);
+        for (size_t i = 0; i < ctx->num_msgs; ++i) free(leaf_hashes[i]);
+        free(leaf_hashes);
+        return NULL;
+    }
 
     const uint8_t* root_hash = merkle_tree_root(tree);
     if (root_hash == NULL) {
@@ -300,7 +307,9 @@ batch_signature_t* batch_signer_sign(batch_signer_t* ctx) {
 
     for (size_t i = 0; i < num_proofs; ++i) {
         proofs[i] = merkle_tree_get_proof(tree, i, &proof_lens[i]);
-        if (proof_lens[i] > 0 && proofs[i] == NULL) {
+        /* For a single-slot tree an empty proof (NULL, len=0) is valid.
+           For any larger tree NULL signals an allocation failure. */
+        if (proofs[i] == NULL && merkle_tree_capacity(tree) > 1u) {
             for (size_t j = 0; j < i; ++j) merkle_tree_free_proof(proofs[j], proof_lens[j]);
             free(proofs);
             free(proof_lens);

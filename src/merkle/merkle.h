@@ -35,8 +35,10 @@ size_t merkle_tree_capacity(merkle_tree_t* tree);
 
 /*
  * Get proof path for leaf_idx.
- * Returns an array of sibling-hash pointers and sets out_len.
- * Caller must release it with merkle_tree_free_proof().
+ * Returns an array of sibling-hash pointers and sets *out_len.
+ * For a single-leaf tree (*out_len == 0) returns NULL; this is a valid empty
+ * proof, not an error. For all larger trees, a NULL return means failure.
+ * Caller must release a non-NULL return with merkle_tree_free_proof().
  */
 uint8_t** merkle_tree_get_proof(merkle_tree_t* tree, size_t leaf_idx, size_t* out_len);
 

@@ -96,7 +96,6 @@ static int test_roundtrip_and_tamper(void) {
                                  HASH_SIZE_32,
                                  test_hash32,
                                  fake_sign_cb,
-                                 fake_verify_cb,
                                  &ctx);
     if (signer == NULL) {
         return 1;
@@ -168,6 +167,38 @@ static int test_roundtrip_and_tamper(void) {
         }
     }
 
+    /* Tamper: flip a byte in the blob; verify or deserialize must reject it. */
+    {
+        uint8_t* tbuf = NULL;
+        size_t tlen = 0;
+        int tamper_ok = 0;
+
+        if (batch_signature_serialize(sig, NULL, &tlen) == 0 && tlen > 16u) {
+            tbuf = (uint8_t*)malloc(tlen);
+            if (tbuf != NULL && batch_signature_serialize(sig, tbuf, &tlen) == 0) {
+                batch_signature_t* bad;
+                tbuf[tlen / 2u] ^= 0xFFu;
+                bad = batch_signature_deserialize(tbuf, tlen, HASH_SIZE_32);
+                if (bad != NULL) {
+                    tamper_ok = !batch_verify(messages, lens, 3u, bad,
+                                              HASH_SIZE_32, test_hash32,
+                                              fake_verify_cb, &ctx);
+                    batch_signature_free(bad);
+                } else {
+                    tamper_ok = 1;
+                }
+            }
+            free(tbuf);
+        }
+
+        if (!tamper_ok) {
+            batch_signature_free(decoded);
+            batch_signature_free(sig);
+            batch_signer_free(signer);
+            return 1;
+        }
+    }
+
     batch_signature_free(decoded);
     batch_signature_free(sig);
     batch_signer_free(signer);
@@ -221,7 +252,6 @@ static int test_adapter_integration(void) {
                                  batch_bb_signature_capacity(&adapter_ctx),
                                  test_hash32,
                                  batch_bb_sign_callback,
-                                 batch_bb_verify_callback,
                                  &adapter_ctx);
     if (signer == NULL) {
         free(sk);

@@ -37,7 +37,6 @@ batch_signer_t* batch_signer_create(size_t hash_size,
                                     size_t root_sig_capacity,
                                     batch_hash_fn hash,
                                     batch_sign_fn sign,
-                                    batch_verify_fn verify,
                                     void* user_ctx);
 
 void batch_signer_free(batch_signer_t* ctx);
