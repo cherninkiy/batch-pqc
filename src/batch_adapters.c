@@ -1,4 +1,4 @@
-#include "batch_signing_adapters.h"
+#include "batch_adapters.h"
 
 int batch_bb_adapter_init(batch_bb_adapter_ctx* ctx,
                           const bb_algorithm* algorithm,

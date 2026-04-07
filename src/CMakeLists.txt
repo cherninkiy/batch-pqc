@@ -26,7 +26,7 @@ target_compile_features(batch_bench_adapters PRIVATE c_std_99)
 add_library(batch_signing_core STATIC
     merkle/merkle.c
     batch_signing.c
-    batch_signing_adapters.c
+    batch_adapters.c
 )
 
 target_include_directories(batch_signing_core

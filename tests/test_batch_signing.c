@@ -1,6 +1,6 @@
 #include "batch_bench.h"
 #include "batch_signing.h"
-#include "batch_signing_adapters.h"
+#include "batch_adapters.h"
 
 #include <stdint.h>
 #include <stdio.h>

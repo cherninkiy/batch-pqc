@@ -1,5 +1,5 @@
-#ifndef BATCH_SIGNING_ADAPTERS_H
-#define BATCH_SIGNING_ADAPTERS_H
+#ifndef BATCH_ADAPTERS_H
+#define BATCH_ADAPTERS_H
 
 #include "batch_bench.h"
 #include "batch_signing.h"
