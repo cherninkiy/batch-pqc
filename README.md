@@ -83,7 +83,7 @@ batch-pqc/
 
 - Linux x86_64 (tested on Ubuntu 22.04)
 - CMake 3.14+, GCC/Clang with C11 support
-- OpenSSL (for SHA-256 fallback, optional)
+- OpenSSL development package (`libssl-dev`) for Kryzhovnik build
 
 ### Quick Start
 
