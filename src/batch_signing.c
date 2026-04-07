@@ -6,6 +6,24 @@
 
 #define BATCH_SIGNATURE_VERSION 1u
 
+static int checked_add_size(size_t lhs, size_t rhs, size_t* out) {
+    if (rhs > SIZE_MAX - lhs) {
+        return -1;
+    }
+
+    *out = lhs + rhs;
+    return 0;
+}
+
+static int checked_mul_size(size_t lhs, size_t rhs, size_t* out) {
+    if (lhs != 0 && rhs > SIZE_MAX / lhs) {
+        return -1;
+    }
+
+    *out = lhs * rhs;
+    return 0;
+}
+
 struct batch_signer {
     size_t hash_size;
     size_t root_sig_capacity;
@@ -55,21 +73,44 @@ static int batch_signer_grow(batch_signer_t* ctx, size_t new_capacity) {
         return 0;
     }
 
-    size_t cap = ctx->capacity ? ctx->capacity * 2 : 16;
+    size_t old_capacity = ctx->capacity;
+    size_t cap = old_capacity ? old_capacity : 16;
     while (cap < new_capacity) {
+        if (cap > SIZE_MAX / 2) {
+            return -1;
+        }
         cap *= 2;
     }
 
-    uint8_t** new_msgs = (uint8_t**)realloc(ctx->messages, cap * sizeof(uint8_t*));
+    size_t msg_bytes = 0;
+    size_t len_bytes = 0;
+    if (checked_mul_size(cap, sizeof(uint8_t*), &msg_bytes) != 0 ||
+        checked_mul_size(cap, sizeof(size_t), &len_bytes) != 0) {
+        return -1;
+    }
+
+    uint8_t** new_msgs = (uint8_t**)malloc(msg_bytes);
     if (new_msgs == NULL) {
         return -1;
     }
 
-    size_t* new_lens = (size_t*)realloc(ctx->msg_lens, cap * sizeof(size_t));
+    size_t* new_lens = (size_t*)malloc(len_bytes);
     if (new_lens == NULL) {
+        free(new_msgs);
         return -1;
     }
 
+    if (old_capacity > 0) {
+        memcpy(new_msgs, ctx->messages, old_capacity * sizeof(uint8_t*));
+        memcpy(new_lens, ctx->msg_lens, old_capacity * sizeof(size_t));
+    }
+    if (cap > old_capacity) {
+        memset(new_msgs + old_capacity, 0, (cap - old_capacity) * sizeof(uint8_t*));
+        memset(new_lens + old_capacity, 0, (cap - old_capacity) * sizeof(size_t));
+    }
+
+    free(ctx->messages);
+    free(ctx->msg_lens);
     ctx->messages = new_msgs;
     ctx->msg_lens = new_lens;
     ctx->capacity = cap;
@@ -315,13 +356,28 @@ int batch_signature_serialize(const batch_signature_t* sig, uint8_t* out, size_t
     if (sig == NULL || out_len == NULL || sig->root_hash == NULL || sig->root_signature == NULL) {
         return -1;
     }
+    if (sig->hash_size > UINT32_MAX ||
+        sig->num_proofs > UINT32_MAX ||
+        sig->root_sig_len > UINT32_MAX) {
+        return -1;
+    }
 
     size_t needed = 0;
-    needed += sizeof(uint32_t) * 5;
-    needed += sig->hash_size;
-    needed += sig->root_sig_len;
+    if (checked_add_size(needed, sizeof(uint32_t) * 5u, &needed) != 0 ||
+        checked_add_size(needed, sig->hash_size, &needed) != 0 ||
+        checked_add_size(needed, sig->root_sig_len, &needed) != 0) {
+        return -1;
+    }
     for (size_t i = 0; i < sig->num_proofs; ++i) {
-        needed += sizeof(uint32_t) + sig->proof_lens[i] * sig->hash_size;
+        size_t proof_bytes = 0;
+
+        if (sig->proof_lens[i] > UINT32_MAX ||
+            (sig->proof_lens[i] > 0 && sig->proofs[i] == NULL) ||
+            checked_mul_size(sig->proof_lens[i], sig->hash_size, &proof_bytes) != 0 ||
+            checked_add_size(needed, sizeof(uint32_t), &needed) != 0 ||
+            checked_add_size(needed, proof_bytes, &needed) != 0) {
+            return -1;
+        }
     }
 
     if (out == NULL) {
@@ -392,6 +448,9 @@ batch_signature_t* batch_signature_deserialize(const uint8_t* data, size_t data_
         (size_t)(end - ptr) < hash_size) {
         return NULL;
     }
+    if (num_proofs > (uint32_t)((size_t)(end - ptr) / sizeof(uint32_t))) {
+        return NULL;
+    }
 
     batch_signature_t* sig = (batch_signature_t*)malloc(sizeof(batch_signature_t));
     if (sig == NULL) {
@@ -417,19 +476,39 @@ batch_signature_t* batch_signature_deserialize(const uint8_t* data, size_t data_
     }
 
     sig->root_sig_len = root_sig_len;
-    sig->root_signature = (uint8_t*)malloc(root_sig_len);
-    if (sig->root_signature == NULL) {
+    sig->root_signature = NULL;
+    if (root_sig_len > 0) {
+        sig->root_signature = (uint8_t*)malloc(root_sig_len);
+    }
+    if (root_sig_len > 0 && sig->root_signature == NULL) {
         free(sig->root_hash);
         free(sig);
         return NULL;
     }
-    memcpy(sig->root_signature, ptr, root_sig_len);
+    if (root_sig_len > 0) {
+        memcpy(sig->root_signature, ptr, root_sig_len);
+    }
     ptr += root_sig_len;
 
-    sig->proofs = (uint8_t***)malloc(num_proofs * sizeof(uint8_t**));
-    sig->proof_lens = (size_t*)malloc(num_proofs * sizeof(size_t));
+    sig->proofs = NULL;
+    sig->proof_lens = NULL;
+    if (num_proofs > 0) {
+        size_t proofs_bytes = 0;
+        size_t proof_lens_bytes = 0;
 
-    if (sig->proofs == NULL || sig->proof_lens == NULL) {
+        if (checked_mul_size(num_proofs, sizeof(uint8_t**), &proofs_bytes) != 0 ||
+            checked_mul_size(num_proofs, sizeof(size_t), &proof_lens_bytes) != 0) {
+            free(sig->root_hash);
+            free(sig->root_signature);
+            free(sig);
+            return NULL;
+        }
+
+        sig->proofs = (uint8_t***)calloc(1, proofs_bytes);
+        sig->proof_lens = (size_t*)calloc(1, proof_lens_bytes);
+    }
+
+    if (num_proofs > 0 && (sig->proofs == NULL || sig->proof_lens == NULL)) {
         free(sig->root_hash);
         free(sig->root_signature);
         free(sig->proofs);
@@ -452,7 +531,11 @@ batch_signature_t* batch_signature_deserialize(const uint8_t* data, size_t data_
 
         sig->proof_lens[i] = proof_len;
 
-        if ((size_t)(end - ptr) < (size_t)proof_len * hash_size) {
+        size_t proof_bytes = 0;
+        size_t proof_ptr_bytes = 0;
+        if (checked_mul_size((size_t)proof_len, hash_size, &proof_bytes) != 0 ||
+            checked_mul_size((size_t)proof_len, sizeof(uint8_t*), &proof_ptr_bytes) != 0 ||
+            (size_t)(end - ptr) < proof_bytes) {
             for (uint32_t j = 0; j < i; ++j) merkle_tree_free_proof(sig->proofs[j], sig->proof_lens[j]);
             free(sig->proofs);
             free(sig->proof_lens);
@@ -462,7 +545,10 @@ batch_signature_t* batch_signature_deserialize(const uint8_t* data, size_t data_
             return NULL;
         }
 
-        sig->proofs[i] = (uint8_t**)malloc(proof_len * sizeof(uint8_t*));
+        sig->proofs[i] = NULL;
+        if (proof_len > 0) {
+            sig->proofs[i] = (uint8_t**)malloc(proof_ptr_bytes);
+        }
         if (proof_len > 0 && sig->proofs[i] == NULL) {
             for (uint32_t j = 0; j < i; ++j) merkle_tree_free_proof(sig->proofs[j], sig->proof_lens[j]);
             free(sig->proofs);

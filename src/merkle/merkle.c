@@ -10,18 +10,32 @@ struct merkle_tree {
     merkle_hash_func hash;
 };
 
+static int checked_mul_size(size_t lhs, size_t rhs, size_t* out) {
+    if (lhs != 0 && rhs > SIZE_MAX / lhs) {
+        return -1;
+    }
+
+    *out = lhs * rhs;
+    return 0;
+}
+
 /* Return next power of two that is >= n. */
-static size_t next_power_of_two(size_t n) {
+static int next_power_of_two(size_t n, size_t* out) {
     if (n == 0) {
-        return 1;
+        *out = 1;
+        return 0;
     }
 
     size_t p = 1;
     while (p < n) {
+        if (p > SIZE_MAX / 2) {
+            return -1;
+        }
         p <<= 1;
     }
 
-    return p;
+    *out = p;
+    return 0;
 }
 
 merkle_tree_t* merkle_tree_create(size_t max_leaves, size_t hash_size, merkle_hash_func hash) {
@@ -29,8 +43,14 @@ merkle_tree_t* merkle_tree_create(size_t max_leaves, size_t hash_size, merkle_ha
         return NULL;
     }
 
-    size_t cap = next_power_of_two(max_leaves);
-    size_t tree_size = 2 * cap * hash_size;
+    size_t cap = 0;
+    size_t tree_nodes = 0;
+    size_t tree_size = 0;
+    if (next_power_of_two(max_leaves, &cap) != 0 ||
+        checked_mul_size(2, cap, &tree_nodes) != 0 ||
+        checked_mul_size(tree_nodes, hash_size, &tree_size) != 0) {
+        return NULL;
+    }
 
     uint8_t* tree = (uint8_t*)calloc(1, tree_size);
     if (tree == NULL) {
