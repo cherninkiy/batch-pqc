@@ -1,4 +1,4 @@
-add_executable(test_adapters_smoke adapters_smoke.c)
+add_executable(test_adapters_smoke test_adapters_smoke.c)
 
 target_link_libraries(test_adapters_smoke PRIVATE batch_bench_adapters)
 
