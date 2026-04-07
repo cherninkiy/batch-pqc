@@ -33,6 +33,10 @@ do_install() {
   echo "[2/3] Initializing/updating git submodules..."
   git submodule sync --recursive
   git submodule update --init --recursive
+  if [ "${THIRD_PARTY_REMOTE_UPDATE:-0}" = "1" ]; then
+    echo "[2/3] Refreshing submodules from tracked remote branches..."
+    git submodule update --remote --merge --recursive
+  fi
 }
 
 do_build() {
