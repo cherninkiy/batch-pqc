@@ -71,8 +71,8 @@ batch-pqc/
 │   ├── merkle/             # реализация дерева Меркла
 │   ├── batch_signing.h     # API пакетной подписи
 │   ├── batch_signing.c     # реализация пакетной подписи
-│   ├── batch_signing_adapters.h
-│   ├── batch_signing_adapters.c
+│   ├── batch_adapters.h    # callback-интерфейс для интеграции с bb_algorithm API
+│   ├── batch_adapters.c    # реализация callback-адаптеров
 │   └── utils/              # таймеры, генераторы сообщений
 ├── bench/                  # исполняемые файлы бенчмарков
 ├── tests/                  # модульные тесты (CTest)

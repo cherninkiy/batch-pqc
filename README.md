@@ -67,8 +67,8 @@ batch-pqc/
 │   ├── merkle/             # Merkle tree implementation
 │   ├── batch_signing.h     # batch signing API
 │   ├── batch_signing.c     # batch signing implementation
-│   ├── batch_signing_adapters.h
-│   ├── batch_signing_adapters.c
+│   ├── batch_adapters.h    # callbacks to connect batch layer with bb_algorithm API
+│   ├── batch_adapters.c    # adapter callback implementation
 │   └── utils/              # timers, message generators
 ├── bench/                  # benchmarking executables
 ├── tests/                  # unit tests (CTest)
