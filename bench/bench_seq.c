@@ -13,6 +13,7 @@ typedef struct bench_config {
     const char *params;
     size_t batch_size;
     size_t iters;
+    size_t warmup;
     size_t msg_size;
     uint64_t seed;
     int verify;
@@ -38,6 +39,7 @@ static void print_usage(const char *prog) {
     printf("  --params <name>        Paramset tag for result output (default: default)\n");
     printf("  --batch-size <n>       Messages per iteration (default: 1)\n");
     printf("  --iters <n>            Iterations (default: 100)\n");
+    printf("  --warmup <n>           Warmup iterations (default: 0)\n");
     printf("  --msg-size <n>         Message size in bytes (default: 1024)\n");
     printf("  --seed <n>             Deterministic message seed (default: 1)\n");
     printf("  --verify <0|1>         Run verify pass (default: 1)\n");
@@ -101,6 +103,7 @@ static int parse_args(int argc, char **argv, bench_config *cfg) {
     cfg->params = "default";
     cfg->batch_size = 1;
     cfg->iters = 100;
+    cfg->warmup = 0;
     cfg->msg_size = BB_DEFAULT_MESSAGE_SIZE;
     cfg->seed = 1;
     cfg->verify = 1;
@@ -129,6 +132,12 @@ static int parse_args(int argc, char **argv, bench_config *cfg) {
         }
         if (strcmp(arg, "--iters") == 0 && i + 1 < argc) {
             if (parse_size(argv[++i], &cfg->iters) != 0 || cfg->iters == 0) {
+                return -1;
+            }
+            continue;
+        }
+        if (strcmp(arg, "--warmup") == 0 && i + 1 < argc) {
+            if (parse_size(argv[++i], &cfg->warmup) != 0) {
                 return -1;
             }
             continue;
@@ -183,6 +192,7 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
     size_t sk_len = 0;
     size_t pk_len = 0;
     size_t total_sig_bytes = 0;
+    size_t total_iters;
     size_t it;
     bb_timer timer;
 
@@ -207,7 +217,11 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
     out->verify_ms = 0.0;
     out->serialize_time_ms = 0.0;
 
-    for (it = 0; it < cfg->iters; ++it) {
+    total_iters = cfg->warmup + cfg->iters;
+
+    for (it = 0; it < total_iters; ++it) {
+        const int measured = it >= cfg->warmup;
+        size_t batch_sig_bytes = 0;
         size_t i;
 
         for (i = 0; i < cfg->batch_size; ++i) {
@@ -216,46 +230,68 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
 
             bb_fill_message(msg, cfg->msg_size, cfg->seed, it * cfg->batch_size + i);
 
-            bb_timer_start(&timer);
-            if (algo->sign(sk, sk_len, pk, pk_len,
-                           msg, cfg->msg_size,
-                           sig_slot, algo->signature_bytes,
-                           &sig_len) != BB_OK) {
-                goto fail;
-            }
-            bb_timer_stop(&timer);
-            out->time_seq_ms += bb_timer_elapsed_ms(&timer);
-
-            sig_lens[i] = sig_len;
-            total_sig_bytes += sig_len;
-
-            if (cfg->verify) {
+            if (measured) {
                 bb_timer_start(&timer);
-                if (algo->verify(pk, pk_len, msg, cfg->msg_size,
-                                 sig_slot, sig_len) != BB_OK) {
+                if (algo->sign(sk, sk_len, pk, pk_len,
+                               msg, cfg->msg_size,
+                               sig_slot, algo->signature_bytes,
+                               &sig_len) != BB_OK) {
                     goto fail;
                 }
                 bb_timer_stop(&timer);
-                out->verify_ms += bb_timer_elapsed_ms(&timer);
+                out->time_seq_ms += bb_timer_elapsed_ms(&timer);
+            } else {
+                if (algo->sign(sk, sk_len, pk, pk_len,
+                               msg, cfg->msg_size,
+                               sig_slot, algo->signature_bytes,
+                               &sig_len) != BB_OK) {
+                    goto fail;
+                }
+            }
+
+            sig_lens[i] = sig_len;
+            batch_sig_bytes += sig_len;
+
+            if (measured) {
+                total_sig_bytes += sig_len;
+            }
+
+            if (cfg->verify) {
+                if (measured) {
+                    bb_timer_start(&timer);
+                    if (algo->verify(pk, pk_len, msg, cfg->msg_size,
+                                     sig_slot, sig_len) != BB_OK) {
+                        goto fail;
+                    }
+                    bb_timer_stop(&timer);
+                    out->verify_ms += bb_timer_elapsed_ms(&timer);
+                } else {
+                    if (algo->verify(pk, pk_len, msg, cfg->msg_size,
+                                     sig_slot, sig_len) != BB_OK) {
+                        goto fail;
+                    }
+                }
             }
         }
 
-        serialized = (uint8_t *)realloc(serialized, total_sig_bytes == 0 ? 1 : total_sig_bytes);
-        if (serialized == NULL) {
-            goto fail;
-        }
-
-        {
-            size_t cursor = 0;
-            bb_timer_start(&timer);
-            for (i = 0; i < cfg->batch_size; ++i) {
-                memcpy(serialized + cursor,
-                       sigs + (i * algo->signature_bytes),
-                       sig_lens[i]);
-                cursor += sig_lens[i];
+        if (measured) {
+            serialized = (uint8_t *)realloc(serialized, batch_sig_bytes == 0 ? 1 : batch_sig_bytes);
+            if (serialized == NULL) {
+                goto fail;
             }
-            bb_timer_stop(&timer);
-            out->serialize_time_ms += bb_timer_elapsed_ms(&timer);
+
+            {
+                size_t cursor = 0;
+                bb_timer_start(&timer);
+                for (i = 0; i < cfg->batch_size; ++i) {
+                    memcpy(serialized + cursor,
+                           sigs + (i * algo->signature_bytes),
+                           sig_lens[i]);
+                    cursor += sig_lens[i];
+                }
+                bb_timer_stop(&timer);
+                out->serialize_time_ms += bb_timer_elapsed_ms(&timer);
+            }
         }
     }
 
@@ -263,7 +299,7 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
     out->params = cfg->params;
     out->batch_size = cfg->batch_size;
     out->peak_memory_mb = get_peak_memory_mb();
-    out->total_sig_size_mb = (double)total_sig_bytes / (1024.0 * 1024.0);
+    out->total_sig_size_mb = ((double)total_sig_bytes / (double)cfg->iters) / (1024.0 * 1024.0);
 
     free(sk);
     free(pk);
@@ -323,6 +359,7 @@ static int write_json(FILE *f, const bench_result *results, size_t count,
                 "    \"params\": \"%s\",\n"
                 "    \"batch_size\": %zu,\n"
                 "    \"iters\": %zu,\n"
+                "    \"warmup\": %zu,\n"
                 "    \"msg_size\": %zu,\n"
                 "    \"seed\": %llu,\n"
                 "    \"verify\": %d\n"
@@ -332,6 +369,7 @@ static int write_json(FILE *f, const bench_result *results, size_t count,
                 cfg->params,
                 cfg->batch_size,
                 cfg->iters,
+                cfg->warmup,
                 cfg->msg_size,
                 (unsigned long long)cfg->seed,
                 cfg->verify) < 0) {

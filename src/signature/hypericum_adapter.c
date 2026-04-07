@@ -2,9 +2,6 @@
 
 #include "api.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 bb_status bb_hypericum_keygen(
     uint8_t *sk,
     size_t sk_capacity,
@@ -39,8 +36,7 @@ bb_status bb_hypericum_sign(
     uint8_t *sig,
     size_t sig_capacity,
     size_t *sig_len) {
-    unsigned char *sm = NULL;
-    unsigned long long smlen = 0;
+    unsigned long long out_sig_len = 0;
     size_t required;
 
     (void)pk;
@@ -58,25 +54,16 @@ bb_status bb_hypericum_sign(
         return BB_BUFFER_TOO_SMALL;
     }
 
-    sm = (unsigned char *)malloc(required + msg_len);
-    if (sm == NULL) {
+    if (crypto_sign_detached(sig, &out_sig_len, msg,
+                             (unsigned long long)msg_len, sk) != 0) {
         return BB_INTERNAL;
     }
 
-    if (crypto_sign(sm, &smlen, msg, (unsigned long long)msg_len, sk) != 0) {
-        free(sm);
+    if (out_sig_len != (unsigned long long)CRYPTO_BYTES) {
         return BB_INTERNAL;
     }
 
-    if (smlen < (unsigned long long)CRYPTO_BYTES) {
-        free(sm);
-        return BB_INTERNAL;
-    }
-
-    memcpy(sig, sm, required);
-    *sig_len = required;
-
-    free(sm);
+    *sig_len = (size_t)out_sig_len;
     return BB_OK;
 }
 
@@ -87,11 +74,6 @@ bb_status bb_hypericum_verify(
     size_t msg_len,
     const uint8_t *sig,
     size_t sig_len) {
-    unsigned char *sm = NULL;
-    unsigned char *recovered = NULL;
-    unsigned long long recovered_len = 0;
-    bb_status status = BB_INVALID_SIG;
-
     if (pk == NULL || msg == NULL || sig == NULL) {
         return BB_BAD_ARG;
     }
@@ -102,32 +84,10 @@ bb_status bb_hypericum_verify(
         return BB_INVALID_SIG;
     }
 
-    sm = (unsigned char *)malloc(sig_len + msg_len);
-    recovered = (unsigned char *)malloc(msg_len);
-    if (sm == NULL || recovered == NULL) {
-        status = BB_INTERNAL;
-        goto cleanup;
+    if (crypto_sign_verify_detached(sig, (unsigned long long)sig_len, msg,
+                                    (unsigned long long)msg_len, pk) != 0) {
+        return BB_INVALID_SIG;
     }
 
-    memcpy(sm, sig, sig_len);
-    memcpy(sm + sig_len, msg, msg_len);
-
-    if (crypto_sign_open(recovered, &recovered_len, sm,
-                         (unsigned long long)(sig_len + msg_len), pk) != 0) {
-        status = BB_INVALID_SIG;
-        goto cleanup;
-    }
-
-    if (recovered_len != (unsigned long long)msg_len ||
-        memcmp(recovered, msg, msg_len) != 0) {
-        status = BB_INVALID_SIG;
-        goto cleanup;
-    }
-
-    status = BB_OK;
-
-cleanup:
-    free(sm);
-    free(recovered);
-    return status;
+    return BB_OK;
 }

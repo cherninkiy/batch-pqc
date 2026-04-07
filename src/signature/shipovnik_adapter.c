@@ -17,7 +17,9 @@ bb_status bb_shipovnik_keygen(
         return BB_BUFFER_TOO_SMALL;
     }
 
-    shipovnik_generate_keys(sk, pk);
+    if (shipovnik_generate_keys_ex(sk, pk) != 0) {
+        return BB_INTERNAL;
+    }
     *sk_len = (size_t)SHIPOVNIK_SECRETKEYBYTES;
     *pk_len = (size_t)SHIPOVNIK_PUBLICKEYBYTES;
     return BB_OK;
@@ -48,7 +50,12 @@ bb_status bb_shipovnik_sign(
         return BB_BUFFER_TOO_SMALL;
     }
 
-    shipovnik_sign(sk, msg, msg_len, sig, &out_sig_len);
+    if (shipovnik_sign_ex(sk, msg, msg_len, sig, &out_sig_len) != 0) {
+        return BB_INTERNAL;
+    }
+    if (out_sig_len > (size_t)SHIPOVNIK_SIGBYTES) {
+        return BB_INTERNAL;
+    }
     *sig_len = out_sig_len;
     return BB_OK;
 }

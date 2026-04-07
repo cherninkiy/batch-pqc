@@ -50,7 +50,7 @@ jobs:
         run: |
           ctest --test-dir build-${{ matrix.name }} \
             --output-on-failure \
-            -R 'kryzhovnik|adapters_smoke|merkletree_test'
+            -R 'test_kryzhovnik|test_kryzhovnik_wrapper|test_kryzhovnik_api|test_merkletree|test_adapters_smoke|test_adapters_batch'
 
       - name: Benchmark smoke (${{ matrix.name }})
         run: |
@@ -59,6 +59,7 @@ jobs:
             --params ${{ matrix.hypericum_paramset }} \
             --batch-size 1 \
             --iters 1 \
+            --warmup 1 \
             --verify 1 \
             --out-csv /tmp/h_${{ matrix.name }}.csv \
             --out-json /tmp/h_${{ matrix.name }}.json
@@ -68,6 +69,7 @@ jobs:
             --params default \
             --batch-size 1 \
             --iters 1 \
+            --warmup 1 \
             --verify 1 \
             --out-csv /tmp/s_${{ matrix.name }}.csv \
             --out-json /tmp/s_${{ matrix.name }}.json
@@ -77,6 +79,7 @@ jobs:
             --params ${{ matrix.kryzhovnik_paramset }} \
             --batch-size 1 \
             --iters 1 \
+            --warmup 1 \
             --verify 1 \
             --out-csv /tmp/k_${{ matrix.name }}.csv \
             --out-json /tmp/k_${{ matrix.name }}.json

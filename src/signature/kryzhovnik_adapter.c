@@ -76,6 +76,6 @@ bb_status bb_kryzhovnik_verify(
         case KRYZHOVNIK_VERIFY_FAIL:
             return BB_INVALID_SIG;
         default:
-            return BB_BAD_ARG;
+            return BB_INTERNAL;
     }
 }
