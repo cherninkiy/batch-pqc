@@ -22,3 +22,32 @@ target_link_libraries(batch_bench_adapters
 )
 
 target_compile_features(batch_bench_adapters PRIVATE c_std_99)
+
+add_library(batch_signing_core STATIC
+    merkle/merkle.c
+    batch_signing.c
+)
+
+target_include_directories(batch_signing_core
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_compile_features(batch_signing_core PRIVATE c_std_99)
+
+add_library(batch_adapters STATIC
+    batch_adapters.c
+)
+
+target_include_directories(batch_adapters
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(batch_adapters
+    PUBLIC
+        batch_signing_core
+        batch_bench_adapters
+)
+
+target_compile_features(batch_adapters PRIVATE c_std_99)

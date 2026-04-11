@@ -33,8 +33,7 @@ jobs:
             build-essential \
             cmake \
             pkg-config \
-            libssl-dev \
-            libcppunit-dev
+            libssl-dev
 
       - name: Configure (${{ matrix.name }})
         run: |
@@ -50,7 +49,7 @@ jobs:
         run: |
           ctest --test-dir build-${{ matrix.name }} \
             --output-on-failure \
-            -R 'test_kryzhovnik|test_kryzhovnik_wrapper|test_kryzhovnik_api|test_merkletree|test_adapters_smoke|test_adapters_batch'
+            -R 'test_kryzhovnik|test_kryzhovnik_wrapper|test_kryzhovnik_api|test_adapters_smoke|test_adapters_batch|test_streebog|test_merkle|test_batch_signing'
 
       - name: Benchmark smoke (${{ matrix.name }})
         run: |

@@ -12,6 +12,3 @@
 	path = third_party/kryzhovnik
 	url = https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
 	branch = main
-[submodule "third_party/iaik_merkle_tree"]
-	path = third_party/iaik_merkle_tree
-	url = https://github.com/IAIK/merkle-tree.git

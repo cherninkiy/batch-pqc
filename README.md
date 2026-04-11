@@ -22,8 +22,10 @@ The goal is to measure the speedup of signing a batch of messages with a single 
 
 ## Features
 
-- (planned) Generic Merkle tree implementation (wrapper around [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree))
-- (planned) Hash abstraction layer (supports **Streebog** via Hypericum implementation, SHA-256 for fallback/testing)
+- Generic Merkle tree implementation integrated in `src/merkle`
+- Batch signing core integrated in `src/batch_signing*`
+- Batch signature format: `root_signature + list_of_proofs` (with metadata framing for serialization)
+- Hash abstraction layer (supports **Streebog** and test hash backends)
 - Signature abstraction layer for Russian PQC:
   - [Shipovnik](https://github.com/QAPP-tech/shipovnik_tc26)
   - [Hypericum](https://github.com/QAPP-tech/hypericum_tc26)
@@ -59,9 +61,14 @@ batch-pqc/
 │   ├── shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
 │   ├── hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 │   ├── kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
-│   └── iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 ├── src/
 │   ├── signature/          # signature provider adapters
+│   ├── batch_bench.h       # unified adapter contract (bb_status, bb_algorithm)
+│   ├── merkle/             # Merkle tree implementation
+│   ├── batch_signing.h     # batch signing API
+│   ├── batch_signing.c     # batch signing implementation
+│   ├── batch_adapters.h    # callbacks to connect batch layer with bb_algorithm API
+│   ├── batch_adapters.c    # adapter callback implementation
 │   └── utils/              # timers, message generators
 ├── bench/                  # benchmarking executables
 ├── tests/                  # unit tests (CTest)
@@ -76,7 +83,7 @@ batch-pqc/
 
 - Linux x86_64 (tested on Ubuntu 22.04)
 - CMake 3.14+, GCC/Clang with C11 support
-- OpenSSL (for SHA-256 fallback, optional)
+- OpenSSL development package (`libssl-dev`) for Kryzhovnik build
 
 ### Quick Start
 
@@ -142,8 +149,8 @@ After running benchmarks, the `results/` directory will contain:
 - [x] Adapters for Shipovnik / Hypericum / Kryzhovnik with unified `bb_status`
 - [x] Detached/status-return integration APIs wired through wrapper submodules
 - [x] Sequential benchmark `bench_seq` with warmup and corrected signature-size metric
-- [x] Test coverage: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkletree`
-- [ ] Merkle-based batch signer/verifier implementation
+- [x] Merkle-based batch signer/verifier implementation
+- [x] Test coverage: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkle`, `test_batch_signing`, `test_streebog`
 - [ ] Sequential vs real batch signing benchmark comparison
 - [ ] Final report (PDF)
 
@@ -164,12 +171,10 @@ This project is licensed under the **MIT License** – see [LICENSE](LICENSE) fi
 
 Third-party components have their own licenses:
 
-- `iaik_merkle_tree` – public domain / BSD-like
 - PQC implementations – please refer to each submodule's license
 
 ## Acknowledgments
 
-- [IAIK/merkle-tree](https://github.com/IAIK/merkle-tree) – Merkle tree implementation (public domain / BSD‑like)
 - [QAPP-tech](https://github.com/QAPP-tech) – Shipovnik and Hypericum (including Streebog hash) PQC signatures
 - [Elena Kirshanova](https://github.com/ElenaKirshanova) – original Kryzhovnik implementation: [pqc_LWR_signature](https://github.com/ElenaKirshanova/pqc_LWR_signature)
 - A compatibility fork is used in this project to integrate Kryzhovnik with Hypericum and Shipovnik
