@@ -1,6 +1,6 @@
 
 # third_party/CMakeLists.txt
-# Collects all submodules: shipovnik, hypericum, kryzhovnik, iaik_merkle_tree
+# Collects all submodules: shipovnik, hypericum, kryzhovnik
 
 cmake_minimum_required(VERSION 3.14)
 project(ThirdPartyModules LANGUAGES C CXX)
