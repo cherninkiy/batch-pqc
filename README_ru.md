@@ -33,7 +33,7 @@
   - [Шиповник](https://github.com/QAPP-tech/shipovnik_tc26)
   - [Гиперикум](https://github.com/QAPP-tech/hypericum_tc26)
   - [Крыжовник](https://github.com/ElenaKirshanova/pqc_LWR_signature)
-- Последовательный бенчмарк (`bench_seq`) с параметрами paramset, verify-проходом и прогревочными итерациями
+- Последовательный и пакетный бенчмарки (`bench_seq`, `bench_batch`) с параметрами paramset, verify-проходом и прогревочными итерациями
 - Набор тестов с унифицированными именами `test_*` в CTest
 
 ## Оригинальные репозитории и форки
@@ -107,8 +107,8 @@ git submodule update --init --recursive
 # Запуск тестов
 ./scripts/third_party.sh tests
 
-# Запуск бенчмарка (последовательная подпись)
-./build/bench/bench_seq --algo hypericum --batch-size 16 --iters 100 --verify 1
+# Запуск бенчмарков (последовательная и пакетная подпись + графики)
+./scripts/benchmark.sh --algo hypericum --batch-sizes 1,4,16 --iters 100 --verify 1
 ```
 
 ### Выбор paramset
@@ -145,8 +145,9 @@ cmake --build build --parallel
 
 После запуска бенчмарков в директории `results/` появятся:
 
-- `raw_data.csv` – замеры времени для каждого (алгоритм, размер пакета)
-- `plots/speedup_vs_batch.png` – график ускорения для всех трёх алгоритмов
+- `bench-<timestamp>/*_seq.csv` и `bench-<timestamp>/*_batch.csv` – исходные замеры
+- `bench-<timestamp>/raw_data.csv` – агрегированные замеры времени для каждого `(алгоритм, размер пакета)`
+- `bench-<timestamp>/plots/speedup_vs_batch.png` – график ускорения для всех трёх алгоритмов
 
 ## Текущий статус (MVP)
 
@@ -156,8 +157,8 @@ cmake --build build --parallel
 - [x] Последовательный бенчмарк `bench_seq` с warmup и исправленной метрикой размера подписей
 - [x] Реализация пакетной подписи/верификации на основе дерева Меркла
 - [x] Покрытие тестами: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkle`, `test_batch_signing`, `test_streebog`
-- [ ] Сравнение бенчмарков: последовательная vs реальная пакетная подпись
-- [ ] Финальный отчёт (PDF)
+- [x] Сравнение бенчмарков: последовательная vs реальная пакетная подпись
+- [x] Финальный отчёт (`docs/report.md`)
 
 **MVP разрабатывается в ветке `dev`. После завершения будет открыт Pull Request в `main` для ревью.**
 
