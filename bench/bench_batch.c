@@ -10,8 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <limits.h>
 
-#define BATCH_HASH_SIZE 32u
+#define BATCH_HASH_BITS 256u
+#define BATCH_HASH_SIZE (BATCH_HASH_BITS / 8u)
 
 typedef struct bench_config {
     const char *algo;
@@ -225,8 +227,21 @@ static int run_one(const bb_algorithm *algo, const bench_config *cfg, bench_resu
 
     sk = (uint8_t *)malloc(algo->secret_key_bytes);
     pk = (uint8_t *)malloc(algo->public_key_bytes);
+
+    /* check for overflow when computing messages buffer size */
+    if (cfg->batch_size > 0 && cfg->msg_size > SIZE_MAX / cfg->batch_size) {
+        goto fail;
+    }
     messages_buf = (uint8_t *)malloc(cfg->batch_size * cfg->msg_size);
+
+    /* check for overflow when allocating pointer/length arrays */
+    if (cfg->batch_size > 0 && sizeof(*messages) > SIZE_MAX / cfg->batch_size) {
+        goto fail;
+    }
     messages = (const uint8_t **)calloc(cfg->batch_size, sizeof(*messages));
+    if (cfg->batch_size > 0 && sizeof(*msg_lens) > SIZE_MAX / cfg->batch_size) {
+        goto fail;
+    }
     msg_lens = (size_t *)calloc(cfg->batch_size, sizeof(*msg_lens));
     if (sk == NULL || pk == NULL || messages_buf == NULL || messages == NULL || msg_lens == NULL) {
         goto fail;
