@@ -23,10 +23,12 @@ WORKDIR /opt/batch-pqc
 # Copy repository into the image
 COPY . /opt/batch-pqc
 
-# Initialize submodules (if present) and perform a build
-RUN git submodule sync --recursive || true \
- && git submodule update --init --recursive || true \
- && mkdir -p build \
+# Build the project inside the image.
+# Note: submodules are not initialized in the image build context. Ensure
+# submodules are checked out on the host before building the image (or add
+# them to the build context). Attempting to run `git submodule` here will
+# usually fail because `.git` is excluded from the Docker build context.
+RUN mkdir -p build \
  && cmake -S . -B build \
  && cmake --build build --parallel
 
