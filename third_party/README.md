@@ -1,6 +1,6 @@
 # third_party
 
-This directory contains git submodules for cryptographic primitives and Merkle tree logic used in batch-pqc.
+This directory contains git submodules for cryptographic primitives used in batch-pqc.
 
 Original algorithm repositories:
 
@@ -13,7 +13,6 @@ Current submodule remotes used by this project:
 - shipovnik/          → https://github.com/cherninkiy/shipovnik-wrapper-tc26
 - hypericum/          → https://github.com/cherninkiy/hypericum-wrapper-tc26
 - kryzhovnik/         → https://github.com/cherninkiy/kryzhovnik-wrapper-tc26
-- iaik_merkle_tree/   → https://github.com/IAIK/merkle-tree
 
 Fork rationale:
 

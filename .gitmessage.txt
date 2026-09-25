@@ -17,7 +17,6 @@
 #   - shipovnik
 #   - hypericum
 #   - kryzhovnik
-#   - iaik_merkle_tree
 # - Ensures reproducible builds with pinned submodule commits
 #
 # chore(repo): add .gitignore and basic CI workflow

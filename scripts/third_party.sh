@@ -28,8 +28,7 @@ do_rebuild() {
 
 do_install() {
   echo "[1/3] Installing dependencies..."
-  sudo apt-get update
-  sudo apt-get install -y cmake build-essential pkg-config libssl-dev libcppunit-dev libntl-dev
+  "$SCRIPT_DIR/install_deps.sh"
   echo "[2/3] Initializing/updating git submodules..."
   git submodule sync --recursive
   git submodule update --init --recursive

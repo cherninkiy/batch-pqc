@@ -30,7 +30,7 @@ The goal is to measure the speedup of signing a batch of messages with a single 
   - [Shipovnik](https://github.com/QAPP-tech/shipovnik_tc26)
   - [Hypericum](https://github.com/QAPP-tech/hypericum_tc26)
   - [Kryzhovnik](https://github.com/ElenaKirshanova/pqc_LWR_signature)
-- Sequential benchmark (`bench_seq`) with configurable paramsets, verification pass, and warmup iterations
+- Sequential and batch benchmarks (`bench_seq`, `bench_batch`) with configurable paramsets, verification pass, and warmup iterations
 - Test suite with unified `test_*` naming in CTest
 
 ## Original Repos and Forks
@@ -102,8 +102,8 @@ git submodule update --init --recursive
 # Run tests
 ./scripts/third_party.sh tests
 
-# Run benchmark (sequential signing)
-./build/bench/bench_seq --algo hypericum --batch-size 16 --iters 100 --verify 1
+# Run benchmark comparison (sequential + batch + plots)
+./scripts/benchmark.sh --algo hypericum --batch-sizes 1,4,16 --iters 100 --verify 1
 ```
 
 ### Paramset Selection
@@ -140,8 +140,11 @@ Note: Kryzhovnik constants are aligned with `security.sage` for `small/medium/la
 
 After running benchmarks, the `results/` directory will contain:
 
-- `raw_data.csv` – timings for each (algorithm, batch_size)
-- `plots/speedup_vs_batch.png` – graph for all three algorithms
+- `bench-<timestamp>/*_seq.csv` and `bench-<timestamp>/*_batch.csv` – raw benchmark slices
+- `bench-<timestamp>/raw_data.csv` – aggregated timings for each `(algorithm, batch_size)`
+- `bench-<timestamp>/plots/speedup_vs_batch.png` – graph for all three algorithms
+
+- Note: automated PDF generation has been removed from this repository; the final report is maintained as Markdown at `docs/report.md`. To produce a PDF locally, install `pandoc` and a LaTeX distribution and convert the Markdown manually.
 
 ## Current Status (MVP)
 
@@ -151,8 +154,8 @@ After running benchmarks, the `results/` directory will contain:
 - [x] Sequential benchmark `bench_seq` with warmup and corrected signature-size metric
 - [x] Merkle-based batch signer/verifier implementation
 - [x] Test coverage: `test_adapters_smoke`, `test_adapters_batch`, `test_kryzhovnik*`, `test_merkle`, `test_batch_signing`, `test_streebog`
-- [ ] Sequential vs real batch signing benchmark comparison
-- [ ] Final report (PDF)
+- [x] Sequential vs real batch signing benchmark comparison
+- [x] Final report (`docs/report.md`)
 
 **MVP is being developed in `dev` branch. After completion, a Pull Request to `main` will be opened for review.**
 

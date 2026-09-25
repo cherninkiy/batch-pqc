@@ -14,6 +14,20 @@ SEED=1
 VERIFY=1
 DRY_RUN=0
 SKIP_EXISTING=1
+MODE="all"
+
+find_plot_python() {
+    local candidate
+    for candidate in python3 /usr/bin/python3; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            if "$candidate" -c 'import matplotlib' >/dev/null 2>&1; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
 
 usage() {
     cat <<EOF
@@ -29,6 +43,7 @@ Usage: ./scripts/benchmark.sh [options]
   --msg-size <n>                          (default: 1024)
   --seed <n>                              (default: 1)
   --verify <0|1>                          (default: 1)
+    --mode <seq|batch|all>                  (default: all)
   --build-dir <path>                      (default: ./build)
   --output-dir <path>                     (default: ./results/bench-<ts>)
   --dry-run
@@ -79,6 +94,10 @@ while [[ $# -gt 0 ]]; do
             VERIFY="$2"
             shift 2
             ;;
+        --mode)
+            MODE="$2"
+            shift 2
+            ;;
         --build-dir)
             BUILD_DIR="$2"
             shift 2
@@ -115,6 +134,13 @@ echo "[benchmark] output:    $OUTPUT_DIR"
 echo "[benchmark] hypericum: $HYPERICUM_PARAMS"
 echo "[benchmark] kryzhovnik:$KRYZHOVNIK_PARAMS"
 echo "[benchmark] skip:      $SKIP_EXISTING"
+echo "[benchmark] mode:      $MODE"
+
+if [[ "$MODE" != "seq" && "$MODE" != "batch" && "$MODE" != "all" ]]; then
+    echo "Unsupported mode: $MODE"
+    usage
+    exit 1
+fi
 
 auto_configure_build() {
     cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
@@ -126,11 +152,17 @@ auto_configure_build() {
 run_one() {
     local algo="$1"
     local batch_size="$2"
-    local csv_out="$OUTPUT_DIR/${algo}_b${batch_size}.csv"
-    local json_out="$OUTPUT_DIR/${algo}_b${batch_size}.json"
+    local kind="$3"
+    local bench_bin="bench_seq"
+    local csv_out="$OUTPUT_DIR/${algo}_b${batch_size}_${kind}.csv"
+    local json_out="$OUTPUT_DIR/${algo}_b${batch_size}_${kind}.json"
     local csv_tmp="$csv_out.tmp"
     local json_tmp="$json_out.tmp"
     local params_label="default"
+
+    if [[ "$kind" == "batch" ]]; then
+        bench_bin="bench_batch"
+    fi
 
     case "$algo" in
         hypericum)
@@ -143,7 +175,7 @@ run_one() {
 
     if [[ "$SKIP_EXISTING" -eq 1 ]]; then
         if [[ -s "$csv_out" && -s "$json_out" ]]; then
-            echo "[skip] algo=$algo batch_size=$batch_size (artifacts exist)"
+            echo "[skip] kind=$kind algo=$algo batch_size=$batch_size (artifacts exist)"
             return
         fi
     fi
@@ -157,7 +189,7 @@ run_one() {
     fi
 
     local cmd=(
-        "$BUILD_DIR/bench/bench_seq"
+        "$BUILD_DIR/bench/$bench_bin"
         --algo "$algo"
         --batch-size "$batch_size"
         --iters "$ITERS"
@@ -172,10 +204,23 @@ run_one() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo "[dry-run] ${cmd[*]}"
     else
-        echo "[run] algo=$algo batch_size=$batch_size"
+        echo "[run] kind=$kind algo=$algo batch_size=$batch_size"
         "${cmd[@]}"
         mv "$csv_tmp" "$csv_out"
         mv "$json_tmp" "$json_out"
+    fi
+}
+
+run_modes() {
+    local algo="$1"
+    local batch_size="$2"
+
+    if [[ "$MODE" == "seq" || "$MODE" == "all" ]]; then
+        run_one "$algo" "$batch_size" "seq"
+    fi
+
+    if [[ "$MODE" == "batch" || "$MODE" == "all" ]]; then
+        run_one "$algo" "$batch_size" "batch"
     fi
 }
 
@@ -191,13 +236,24 @@ IFS=',' read -r -a batches <<< "$BATCH_SIZES"
 if [[ "$ALGOS" == "all" ]]; then
     for algo in shipovnik hypericum kryzhovnik; do
         for b in "${batches[@]}"; do
-            run_one "$algo" "$b"
+            run_modes "$algo" "$b"
         done
     done
 else
     for b in "${batches[@]}"; do
-        run_one "$ALGOS" "$b"
+        run_modes "$ALGOS" "$b"
     done
+fi
+
+if PLOT_PYTHON="$(find_plot_python)"; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "[dry-run] $PLOT_PYTHON $ROOT_DIR/scripts/plot_results.py --results-dir $OUTPUT_DIR"
+    else
+        "$PLOT_PYTHON" "$ROOT_DIR/scripts/plot_results.py" --results-dir "$OUTPUT_DIR" || \
+            echo "[benchmark] warning: plot generation failed"
+    fi
+else
+    echo "[benchmark] warning: no python interpreter with matplotlib found, skipping plot generation"
 fi
 
 echo "[benchmark] done"
